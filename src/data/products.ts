@@ -3,46 +3,44 @@ import type { Product } from '@/types';
 export const ALL_PRODUCTS: Product[] = [
   {
     id: '1',
-    slug: 'pack-tech-ultimate',
-    name: '📦 باك التكنولوجيا المتكامل',
-    description: '📱 كل ما تحتاجه في مكان واحد!',
-    longDescription: `📱 **باور بانك** شحن سريع وقوة تدوم معك طول اليوم ⚡
+    slug: 'pack-itel-a50-ultimate',
+    name: '📦 باك itel A50 Ultimate',
+    description: '📱 هاتف itel A50 4G + ماكينة حلاقة + مكنسة + باور بانك + شاحن + حامل سيارة!',
+    longDescription: `📱 **itel A50 4G** — هاتف ذكي بشاشة 6.6" وذاكرة 8GB RAM + 128GB 💪
 
-🎵 **سماعات وسبياكر** صوت نقي وقوي للاستمتاع بالموسيقى 🎶
+🪒 **Kemei 5in1** — ماكينة حلاقة متعددة الاستخدامات ✂️
 
-📲 **هواتف ذكية وأساسية** اختيارات متنوعة تناسب جميع الاحتياجات 📞
+🧹 **ZMW 11** — مكنسة كهربائية محمولة 120W قوية 🔥
 
-⌚ **ساعات ذكية** تابع نشاطك وصحتك بسهولة 💪
+🔋 **Bovo D40** — باور بانك 10000mAh للشحن أثناء التنقل ⚡
 
-💧 **حافظات مقاومة للماء** حماية لهاتفك في كل الظروف 🌊
+🔌 **Bovo G1** — شاحن سريع لجميع الأجهزة 🔋
 
-🔌 **شواحن وكابلات** جودة عالية وشحن آمن 🔋
+🚗 **حامل هاتف للسيارة 360°** — تثبيت محكم ودوران كامل 📱
 
-🛡️ **لواصق حماية الشاشة** حماية قوية ضد الخدوش والصدمات 🧼
+✨ **كل ما تحتاجه في باك واحد بسعر خيالي!**
 
-✨ **جودة عالية** | **أسعار مناسبة** | **ضمان على المنتجات**
-
-🚚 **توصيل سريع لجميع الولايات**`,
-    price: 20650,
+🚚 **توصيل سريع لجميع الولايات**
+💯 **ضمان على جميع المنتجات**`,
+    price: 22000,
     originalPrice: 28000,
     category: 'packets',
     images: [
-      'https://www.tiarboutique.shop/packs/pack-tech-main.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-8.png',
-      'https://www.tiarboutique.shop/packs/pack-tech-2.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-4.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-1.png',
-      'https://www.tiarboutique.shop/packs/pack-tech-6.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-5.jpg',
+      '/images/products/pack-itel-a50/main.jpg',
+      '/images/products/pack-itel-a50/itel-a50.jpg',
+      '/images/products/pack-itel-a50/kemei-5in1.jpg',
+      '/images/products/pack-itel-a50/zmw-11.jpg',
+      '/images/products/pack-itel-a50/bovo-d40.jpg',
+      '/images/products/pack-itel-a50/bovo-g1.jpg',
+      '/images/products/pack-itel-a50/car-holder.jpg',
     ],
     specifications: {
-      'باور بانك': 'Hoco J101 - 10000mAh - 22.5W',
-      'سماعة بلوتوث': 'صوت قوي ونقي',
-      'هواتف': 'عادية وذكية',
-      'ساعة ذكية': 'تصميم أنيق',
-      'حافظة مضادة للماء': 'لحماية هاتفك',
-      'شواحن وكوابل': 'أصلية 100%',
-      'لواصق + تنظيف': 'مجموعة كاملة',
+      'itel A50 4G': '8GB RAM + 128GB - شاشة 6.6"',
+      'Kemei 5in1': 'ماكينة حلاقة متعددة الاستخدامات',
+      'ZMW 11': 'مكنسة كهربائية محمولة 120W',
+      'Bovo D40': 'باور بانك 10000mAh',
+      'Bovo G1': 'شاحن سريع',
+      'حامل سيارة': 'دوران 360° - تثبيت قوي',
       'الضمان': 'على جميع المنتجات',
     },
     inStock: true,
@@ -51,87 +49,6 @@ export const ALL_PRODUCTS: Product[] = [
     deal: true,
     rating: 5,
     reviewsCount: 47,
-  },
-  {
-    id: '2',
-    slug: 'pack-reekoo-note-60',
-    name: '📱🔥 باك Reekoo NOTE 60',
-    description: '📱 هاتفين + باور بانك + سماعات RGB + إكسسوارات!',
-    longDescription: `📱 **Reekoo NOTE 60** — هاتف ذكي بكاميرا 24MP Ultra وأداء قوي 💪
-
-📞 **Gevo G1** — هاتف صغير عملي ب 3 شرائح SIM وراديو FM 📻
-
-🔋 **Gevo P40 Power Bank** — سعة 10000mAh مع 4 مخارج وكابلات مدمجة ⚡
-
-🎧 **Cat Ear Wireless Headphone P47M** — سماعات لاسلكية بإضاءة RGB رائعة 🌈
-
-🔌 **كابل AUX 1800mm** — للسيارة والسبيكر 🎵
-
-🚗 **شاحن سيارة** — اشحن هاتفك أثناء التنقل 🔋
-
-🐰 **LED Animal Camera** — مصباح LED لطيف + حامل أقلام ✨
-
-✨ **كل ما تحتاجه في باك واحد!**
-
-🚚 **توصيل سريع لجميع الولايات**`,
-    price: 19900,
-    originalPrice: 25300,
-    category: 'packets',
-    images: [
-      'https://www.tiarboutique.shop/packs/reekoo-note-60/main.jpg',
-      'https://www.tiarboutique.shop/packs/reekoo-note-60/2.jpg',
-      'https://www.tiarboutique.shop/packs/reekoo-note-60/3.jpg',
-    ],
-    specifications: {
-      'Reekoo NOTE 60': 'كاميرا 24MP Ultra',
-      'Gevo G1': '3 شرائح SIM + راديو FM',
-      'Power Bank': '10000mAh - 4 مخارج',
-      'سماعات RGB': 'Cat Ear P47M',
-      'كابل AUX': '1800mm',
-      'شاحن سيارة': 'شحن سريع',
-      'مصباح LED': 'تصميم حيواني لطيف',
-    },
-    inStock: true,
-    stock: 30,
-    featured: true,
-    deal: true,
-    rating: 5,
-    reviewsCount: 32,
-  },
-  {
-    id: '3',
-    slug: 'pack-media-phone',
-    name: '📦 باك Media Phone',
-    description: '📱 باك كامل للموبايل مع كل الإكسسوارات!',
-    longDescription: `📱 **باك Media Phone الكامل**
-
-✨ كل ما تحتاجه لهاتفك في مكان واحد!
-
-🔋 باور بانك عالي السعة
-🎧 سماعات بلوتوث
-🔌 شواحن وكابلات أصلية
-🛡️ حماية شاشة
-📱 إكسسوارات متنوعة
-
-🚚 **توصيل سريع لجميع الولايات**`,
-    price: 19700,
-    originalPrice: 24000,
-    category: 'packets',
-    images: [
-      'https://www.tiarboutique.shop/packs/media-phone/pack-main.jpg',
-    ],
-    specifications: {
-      'باور بانك': 'سعة عالية',
-      'سماعات': 'بلوتوث لاسلكية',
-      'شواحن': 'أصلية 100%',
-      'حماية': 'لاصق شاشة',
-    },
-    inStock: true,
-    stock: 25,
-    featured: true,
-    deal: false,
-    rating: 5,
-    reviewsCount: 28,
   },
 ];
 
