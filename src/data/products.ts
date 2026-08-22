@@ -26,9 +26,9 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
-      'https://www.tiarboutique.shop/packs/pack-tech-main.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-8.png',
-      'https://www.tiarboutique.shop/packs/pack-tech-2.jpg',
+      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800',
+      'https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=800',
+      'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=800',
     ],
     specifications: {
       'itel A50 4G': '8GB RAM + 128GB - شاشة 6.6"',
