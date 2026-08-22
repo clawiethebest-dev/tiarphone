@@ -3,6 +3,58 @@ import type { Product } from '@/types';
 export const ALL_PRODUCTS: Product[] = [
   {
     id: '1',
+    slug: 'pack-infinix-smart10',
+    name: '📦 باك Infinix Smart 10',
+    description: '📱 هاتف Infinix Smart 10 + ساعة Y36 Ultra3 + سماعات Cat Ear!',
+    longDescription: `## 📱 Infinix Smart 10
+هاتف ذكي بأداء ممتاز وبطارية قوية 💪
+- شاشة كبيرة
+- كاميرا عالية الجودة
+- بطارية تدوم طويلاً
+
+## ⌚ Y36 Ultra3 Smartwatch
+ساعة ذكية بشاشة **2.3 بوصة** كبيرة 🔥
+- **6 أساور** مختلفة الألوان
+- مقاومة للماء
+- متابعة النشاط والصحة
+- استقبال المكالمات والإشعارات
+
+## 🎧 سماعات Cat Ear Doge
+سماعات لاسلكية بتصميم قطة رائع 🐱
+- إضاءة LED ملونة
+- صوت نقي وقوي
+- بلوتوث 5.0
+- بطارية طويلة
+
+---
+
+✨ **باك كامل بسعر خيالي!**
+
+🚚 **توصيل سريع لجميع الولايات**
+💯 **ضمان على جميع المنتجات**`,
+    price: 22000,
+    originalPrice: 28000,
+    category: 'packets',
+    images: [
+      '/packs/infinix-smart10-pack/phone.jpg',
+      '/packs/infinix-smart10-pack/watch.png',
+      '/packs/infinix-smart10-pack/headphones.jpg',
+    ],
+    specifications: {
+      'Infinix Smart 10': 'هاتف ذكي - شاشة كبيرة',
+      'Y36 Ultra3': 'ساعة ذكية 2.3" + 6 أساور',
+      'سماعات Doge': 'Cat Ear - بلوتوث - LED',
+      'الضمان': 'على جميع المنتجات',
+    },
+    inStock: true,
+    stock: 50,
+    featured: true,
+    deal: true,
+    rating: 5,
+    reviewsCount: 35,
+  },
+  {
+    id: '2',
     slug: 'pack-itel-a50-ultimate',
     name: '📦 باك itel A50 Ultimate',
     description: '📱 هاتف itel A50 4G + ماكينة حلاقة + مكنسة + باور بانك + شاحن + حامل سيارة!',
@@ -66,7 +118,7 @@ export const ALL_PRODUCTS: Product[] = [
     reviewsCount: 47,
   },
   {
-    id: '2',
+    id: '3',
     slug: 'pack-tech-ultimate',
     name: '📦 باك التكنولوجيا المتكامل',
     description: '📱 كل ما تحتاجه في مكان واحد!',
@@ -126,7 +178,7 @@ export const ALL_PRODUCTS: Product[] = [
     reviewsCount: 47,
   },
   {
-    id: '3',
+    id: '4',
     slug: 'pack-reekoo-note-60',
     name: '📱🔥 باك Reekoo NOTE 60',
     description: '📱 هاتفين + باور بانك + سماعات RGB + إكسسوارات!',
@@ -187,7 +239,7 @@ export const ALL_PRODUCTS: Product[] = [
     reviewsCount: 32,
   },
   {
-    id: '4',
+    id: '5',
     slug: 'pack-media-phone',
     name: '📦 باك Media Phone',
     description: '📱 باك كامل للموبايل مع كل الإكسسوارات!',
