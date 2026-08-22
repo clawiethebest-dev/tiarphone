@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import ReactMarkdown from 'react-markdown';
 import { getProductBySlug, ALL_PRODUCTS } from '@/data/products';
 import OrderPopup from '@/components/OrderPopup';
 import { formatPrice } from '@/lib/utils';
@@ -84,8 +85,8 @@ export default function ProductPage() {
           </div>
 
           {product.longDescription && (
-            <div className="prose prose-sm max-w-none whitespace-pre-line">
-              {product.longDescription}
+            <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-strong:text-gray-900 prose-li:text-gray-700">
+              <ReactMarkdown>{product.longDescription}</ReactMarkdown>
             </div>
           )}
 

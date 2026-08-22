@@ -6,17 +6,33 @@ export const ALL_PRODUCTS: Product[] = [
     slug: 'pack-itel-a50-ultimate',
     name: '📦 باك itel A50 Ultimate',
     description: '📱 هاتف itel A50 4G + ماكينة حلاقة + مكنسة + باور بانك + شاحن + حامل سيارة!',
-    longDescription: `📱 **itel A50 4G** — هاتف ذكي بشاشة 6.6" وذاكرة 8GB RAM + 128GB 💪
+    longDescription: `## 📱 itel A50 4G
+هاتف ذكي بشاشة **6.6 بوصة** وذاكرة **8GB RAM + 128GB** 💪
 
-🪒 **Kemei 5in1** — ماكينة حلاقة متعددة الاستخدامات ✂️
+## 🪒 Kemei 5in1
+ماكينة حلاقة متعددة الاستخدامات ✂️
+- حلاقة الشعر
+- تشذيب اللحية
+- تنظيف الأنف والأذن
 
-🧹 **ZMW 11** — مكنسة كهربائية محمولة 120W قوية 🔥
+## 🧹 ZMW 11
+مكنسة كهربائية محمولة **120W** قوية 🔥
+- شفط قوي
+- بطارية قابلة للشحن
+- مثالية للسيارة والمنزل
 
-🔋 **Bovo D40** — باور بانك 10000mAh للشحن أثناء التنقل ⚡
+## 🔋 Bovo D40
+باور بانك **10000mAh** للشحن أثناء التنقل ⚡
+- شحن سريع
+- منفذين USB
 
-🔌 **Bovo G1** — شاحن سريع لجميع الأجهزة 🔋
+## 🔌 Bovo G1
+شاحن سريع لجميع الأجهزة 🔋
 
-🚗 **حامل هاتف للسيارة 360°** — تثبيت محكم ودوران كامل 📱
+## 🚗 حامل هاتف للسيارة 360°
+تثبيت محكم ودوران كامل 📱
+
+---
 
 ✨ **كل ما تحتاجه في باك واحد بسعر خيالي!**
 
@@ -26,9 +42,12 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
-      '/packs/itel-a50-pack/main.jpg',
-      '/packs/itel-a50-pack/2.jpg',
-      '/packs/itel-a50-pack/3.jpg',
+      '/packs/itel-a50-pack/itel-a50.jpg',
+      '/packs/itel-a50-pack/kemei-5in1.jpg',
+      '/packs/itel-a50-pack/vacuum.jpg',
+      '/packs/itel-a50-pack/powerbank.jpg',
+      '/packs/itel-a50-pack/charger.jpg',
+      '/packs/itel-a50-pack/car-holder.jpg',
     ],
     specifications: {
       'itel A50 4G': '8GB RAM + 128GB - شاشة 6.6"',
@@ -51,19 +70,28 @@ export const ALL_PRODUCTS: Product[] = [
     slug: 'pack-tech-ultimate',
     name: '📦 باك التكنولوجيا المتكامل',
     description: '📱 كل ما تحتاجه في مكان واحد!',
-    longDescription: `📱 **باور بانك** شحن سريع وقوة تدوم معك طول اليوم ⚡
+    longDescription: `## ⚡ باور بانك
+شحن سريع وقوة تدوم معك طول اليوم
 
-🎵 **سماعات وسبياكر** صوت نقي وقوي للاستمتاع بالموسيقى 🎶
+## 🎵 سماعات وسبيكر
+صوت نقي وقوي للاستمتاع بالموسيقى 🎶
 
-📲 **هواتف ذكية وأساسية** اختيارات متنوعة تناسب جميع الاحتياجات 📞
+## 📲 هواتف ذكية وأساسية
+اختيارات متنوعة تناسب جميع الاحتياجات 📞
 
-⌚ **ساعات ذكية** تابع نشاطك وصحتك بسهولة 💪
+## ⌚ ساعات ذكية
+تابع نشاطك وصحتك بسهولة 💪
 
-💧 **حافظات مقاومة للماء** حماية لهاتفك في كل الظروف 🌊
+## 💧 حافظات مقاومة للماء
+حماية لهاتفك في كل الظروف 🌊
 
-🔌 **شواحن وكابلات** جودة عالية وشحن آمن 🔋
+## 🔌 شواحن وكابلات
+جودة عالية وشحن آمن 🔋
 
-🛡️ **لواصق حماية الشاشة** حماية قوية ضد الخدوش والصدمات 🧼
+## 🛡️ لواصق حماية الشاشة
+حماية قوية ضد الخدوش والصدمات 🧼
+
+---
 
 ✨ **جودة عالية** | **أسعار مناسبة** | **ضمان على المنتجات**
 
@@ -72,13 +100,13 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
-      'https://www.tiarboutique.shop/packs/pack-tech-main.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-8.png',
-      'https://www.tiarboutique.shop/packs/pack-tech-2.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-4.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-1.png',
-      'https://www.tiarboutique.shop/packs/pack-tech-6.jpg',
-      'https://www.tiarboutique.shop/packs/pack-tech-5.jpg',
+      '/packs/pack-tech-main.jpg',
+      '/packs/pack-tech-8.png',
+      '/packs/pack-tech-2.jpg',
+      '/packs/pack-tech-4.jpg',
+      '/packs/pack-tech-1.png',
+      '/packs/pack-tech-6.jpg',
+      '/packs/pack-tech-5.jpg',
     ],
     specifications: {
       'باور بانك': 'Hoco J101 - 10000mAh - 22.5W',
@@ -102,19 +130,33 @@ export const ALL_PRODUCTS: Product[] = [
     slug: 'pack-reekoo-note-60',
     name: '📱🔥 باك Reekoo NOTE 60',
     description: '📱 هاتفين + باور بانك + سماعات RGB + إكسسوارات!',
-    longDescription: `📱 **Reekoo NOTE 60** — هاتف ذكي بكاميرا 24MP Ultra وأداء قوي 💪
+    longDescription: `## 📱 Reekoo NOTE 60
+هاتف ذكي بكاميرا **24MP Ultra** وأداء قوي 💪
 
-📞 **Gevo G1** — هاتف صغير عملي ب 3 شرائح SIM وراديو FM 📻
+## 📞 Gevo G1
+هاتف صغير عملي:
+- **3 شرائح SIM**
+- راديو FM 📻
+- بطارية طويلة
 
-🔋 **Gevo P40 Power Bank** — سعة 10000mAh مع 4 مخارج وكابلات مدمجة ⚡
+## 🔋 Gevo P40 Power Bank
+سعة **10000mAh** مع:
+- 4 مخارج
+- كابلات مدمجة ⚡
 
-🎧 **Cat Ear Wireless Headphone P47M** — سماعات لاسلكية بإضاءة RGB رائعة 🌈
+## 🎧 Cat Ear Wireless Headphone P47M
+سماعات لاسلكية بإضاءة **RGB** رائعة 🌈
 
-🔌 **كابل AUX 1800mm** — للسيارة والسبيكر 🎵
+## 🔌 كابل AUX 1800mm
+للسيارة والسبيكر 🎵
 
-🚗 **شاحن سيارة** — اشحن هاتفك أثناء التنقل 🔋
+## 🚗 شاحن سيارة
+اشحن هاتفك أثناء التنقل 🔋
 
-🐰 **LED Animal Camera** — مصباح LED لطيف + حامل أقلام ✨
+## 🐰 LED Animal Camera
+مصباح LED لطيف + حامل أقلام ✨
+
+---
 
 ✨ **كل ما تحتاجه في باك واحد!**
 
@@ -123,9 +165,10 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
-      'https://www.tiarboutique.shop/packs/reekoo-note-60/main.jpg',
-      'https://www.tiarboutique.shop/packs/reekoo-note-60/2.jpg',
-      'https://www.tiarboutique.shop/packs/reekoo-note-60/3.jpg',
+      '/packs/reekoo-note-60/main.jpg',
+      '/packs/reekoo-note-60/phone.jpg',
+      '/packs/reekoo-note-60/powerbank.jpg',
+      '/packs/reekoo-note-60/headphones.jpg',
     ],
     specifications: {
       'Reekoo NOTE 60': 'كاميرا 24MP Ultra',
@@ -148,22 +191,28 @@ export const ALL_PRODUCTS: Product[] = [
     slug: 'pack-media-phone',
     name: '📦 باك Media Phone',
     description: '📱 باك كامل للموبايل مع كل الإكسسوارات!',
-    longDescription: `📱 **باك Media Phone الكامل**
+    longDescription: `## 📦 باك Media Phone الكامل
 
-✨ كل ما تحتاجه لهاتفك في مكان واحد!
+✨ **كل ما تحتاجه لهاتفك في مكان واحد!**
 
-🔋 باور بانك عالي السعة
-🎧 سماعات بلوتوث
-🔌 شواحن وكابلات أصلية
-🛡️ حماية شاشة
-📱 إكسسوارات متنوعة
+### المحتويات:
+- 🔋 **باور بانك** عالي السعة
+- 🎧 **سماعات بلوتوث** لاسلكية
+- 🔌 **شواحن وكابلات** أصلية
+- 🛡️ **حماية شاشة** قوية
+- 📱 **إكسسوارات متنوعة**
 
-🚚 **توصيل سريع لجميع الولايات**`,
+---
+
+🚚 **توصيل سريع لجميع الولايات**
+💯 **ضمان على جميع المنتجات**`,
     price: 22000,
     originalPrice: 28000,
     category: 'packets',
     images: [
-      'https://www.tiarboutique.shop/packs/media-phone/pack-main.jpg',
+      '/packs/media-phone/pack-main.jpg',
+      '/packs/media-phone/hoco-powerbank.jpg',
+      '/packs/media-phone/hoco-earbuds.jpg',
     ],
     specifications: {
       'باور بانك': 'سعة عالية',
