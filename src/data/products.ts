@@ -5,12 +5,12 @@ export const ALL_PRODUCTS: Product[] = [
     id: '1',
     slug: 'pack-infinix-smart10',
     name: '📦 باك Infinix Smart 10',
-    description: '📱 هاتف Infinix Smart 10 + ساعة Y36 Ultra3 + سماعات Cat Ear + DOGE DU-T256!',
+    description: '📱 هاتف Infinix Smart 10 + ساعة Y36 Ultra3 + سماعات Hishell + Dunth V5.0!',
     longDescription: `## 📱 Infinix Smart 10
 هاتف ذكي بأداء ممتاز وبطارية قوية 💪
-- شاشة كبيرة
-- كاميرا عالية الجودة
-- بطارية تدوم طويلاً
+- شاشة 6.6 بوصة HD+
+- كاميرا 13MP
+- بطارية 5000mAh
 
 ## ⌚ Y36 Ultra3 Smartwatch
 ساعة ذكية بشاشة **2.3 بوصة** كبيرة 🔥
@@ -19,39 +19,39 @@ export const ALL_PRODUCTS: Product[] = [
 - متابعة النشاط والصحة
 - استقبال المكالمات والإشعارات
 
-## 🎧 سماعات Cat Ear Doge
-سماعات لاسلكية بتصميم قطة رائع 🐱
-- إضاءة LED ملونة
-- صوت نقي وقوي
+## 🎧 Hishell True Wireless
+سماعات لاسلكية بتصميم أنيق 💎
+- علبة شفافة رائعة
+- صوت HiFi نقي
 - بلوتوث 5.0
 
-## 🎵 DOGE DU-T256
-سماعات لاسلكية صغيرة 🎶
-- صوت عالي الجودة
-- مقاومة للماء
-- علبة شحن محمولة
+## 🎵 Dunth V5.0
+سماعات لاسلكية سوداء 🎶
+- شاشة LED رقمية
+- Auto Connection
+- علبة شحن شفافة
 
 ---
 
 ✨ **باك كامل بسعر خيالي!**
 
 🚚 **توصيل سريع لجميع الولايات**
-💯 **ضمان على جميع المنتجات**`,
+💯 **ضمان 6 أشهر على جميع المنتجات**`,
     price: 22000,
     originalPrice: 28000,
     category: 'packets',
     images: [
       '/packs/infinix-smart10-pack/phone.jpg',
       '/packs/infinix-smart10-pack/watch.jpg',
-      '/packs/infinix-smart10-pack/headphones.jpg',
-      '/packs/infinix-smart10-pack/airpods.webp',
+      '/packs/infinix-smart10-pack/hishell-earbuds.webp',
+      '/packs/infinix-smart10-pack/dunth-earbuds.jpg',
     ],
     specifications: {
-      'Infinix Smart 10': 'هاتف ذكي - شاشة كبيرة',
+      'Infinix Smart 10': 'هاتف 6.6" - 5000mAh',
       'Y36 Ultra3': 'ساعة ذكية 2.3" + 6 أساور',
-      'سماعات Doge': 'Cat Ear - بلوتوث - LED',
-      'DOGE DU-T256': 'سماعات لاسلكية صغيرة + علبة شحن',
-      'الضمان': 'على جميع المنتجات',
+      'Hishell TWS': 'سماعات HiFi - علبة شفافة',
+      'Dunth V5.0': 'سماعات بلوتوث - شاشة LED',
+      'الضمان': '6 أشهر على جميع المنتجات',
     },
     inStock: true,
     stock: 50,
