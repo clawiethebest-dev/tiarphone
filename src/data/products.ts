@@ -5,7 +5,7 @@ export const ALL_PRODUCTS: Product[] = [
     id: '1',
     slug: 'pack-infinix-smart10',
     name: '📦 باك Infinix Smart 10',
-    description: '📱 هاتف Infinix Smart 10 + ساعة Y36 Ultra3 + سماعات Cat Ear!',
+    description: '📱 هاتف Infinix Smart 10 + ساعة Y36 Ultra3 + سماعات Cat Ear + AirPods!',
     longDescription: `## 📱 Infinix Smart 10
 هاتف ذكي بأداء ممتاز وبطارية قوية 💪
 - شاشة كبيرة
@@ -24,7 +24,12 @@ export const ALL_PRODUCTS: Product[] = [
 - إضاءة LED ملونة
 - صوت نقي وقوي
 - بلوتوث 5.0
-- بطارية طويلة
+
+## 🎵 AirPods
+سماعات لاسلكية أنيقة 🎶
+- صوت عالي الجودة
+- اتصال سريع
+- علبة شحن
 
 ---
 
@@ -37,13 +42,15 @@ export const ALL_PRODUCTS: Product[] = [
     category: 'packets',
     images: [
       '/packs/infinix-smart10-pack/phone.jpg',
-      '/packs/infinix-smart10-pack/watch.png',
+      '/packs/infinix-smart10-pack/watch.jpg',
       '/packs/infinix-smart10-pack/headphones.jpg',
+      '/packs/infinix-smart10-pack/airpods.jpg',
     ],
     specifications: {
       'Infinix Smart 10': 'هاتف ذكي - شاشة كبيرة',
       'Y36 Ultra3': 'ساعة ذكية 2.3" + 6 أساور',
       'سماعات Doge': 'Cat Ear - بلوتوث - LED',
+      'AirPods': 'سماعات لاسلكية + علبة شحن',
       'الضمان': 'على جميع المنتجات',
     },
     inStock: true,
