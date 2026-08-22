@@ -26,9 +26,9 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
-      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800',
-      'https://images.unsplash.com/photo-1605236453806-6ff36851218e?w=800',
-      'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=800',
+      'https://images.pexels.com/photos/699122/pexels-photo-699122.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/3921718/pexels-photo-3921718.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/3945667/pexels-photo-3945667.jpeg?auto=compress&cs=tinysrgb&w=800',
     ],
     specifications: {
       'itel A50 4G': '8GB RAM + 128GB - شاشة 6.6"',
