@@ -26,13 +26,9 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
-      '/images/products/pack-itel-a50/main.jpg',
-      '/images/products/pack-itel-a50/itel-a50.jpg',
-      '/images/products/pack-itel-a50/kemei-5in1.jpg',
-      '/images/products/pack-itel-a50/zmw-11.jpg',
-      '/images/products/pack-itel-a50/bovo-d40.jpg',
-      '/images/products/pack-itel-a50/bovo-g1.jpg',
-      '/images/products/pack-itel-a50/car-holder.jpg',
+      'https://www.tiarboutique.shop/packs/pack-tech-main.jpg',
+      'https://www.tiarboutique.shop/packs/pack-tech-8.png',
+      'https://www.tiarboutique.shop/packs/pack-tech-2.jpg',
     ],
     specifications: {
       'itel A50 4G': '8GB RAM + 128GB - شاشة 6.6"',
