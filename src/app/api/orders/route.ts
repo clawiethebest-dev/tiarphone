@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     if (!isSupabaseConfigured() || !supabase) {
-      return NextResponse.json({ orders: [] });
+      return NextResponse.json({ success: true, data: [] });
     }
 
     const { data, error } = await supabase
@@ -99,14 +99,15 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      throw error;
+      console.error('Supabase GET error:', error);
+      return NextResponse.json({ success: false, data: [], error: error.message });
     }
 
-    return NextResponse.json({ orders: data || [] });
+    return NextResponse.json({ success: true, data: data || [] });
   } catch (error) {
     console.error('Get orders error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      { success: false, data: [], error: 'Failed to fetch orders' },
       { status: 500 }
     );
   }
