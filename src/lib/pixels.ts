@@ -47,9 +47,11 @@ interface AddToCartParams {
 
 interface PurchaseParams {
   content_ids: string[];
+  content_name?: string;
   value: number;
   currency: string;
   num_items: number;
+  order_id?: string;
 }
 
 // Track page view

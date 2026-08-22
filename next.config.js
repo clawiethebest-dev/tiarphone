@@ -27,6 +27,14 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'tiarboutique.shop',
         pathname: '/packs/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com'
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com'
       }
     ]
   }

@@ -78,6 +78,7 @@ export interface ParcelInput {
   freeshipping?: boolean;
   stopdesk_id?: number;
   has_exchange?: boolean;
+  product_to_collect?: string;
 }
 
 // API Functions
@@ -93,6 +94,11 @@ export async function getWilayas(): Promise<Wilaya[]> {
 }
 
 export async function getCommunes(wilayaId?: number): Promise<Commune[]> {
+  return getCommunesByWilaya(wilayaId);
+}
+
+// Alias for backward compatibility
+export async function getCommunesByWilaya(wilayaId?: number): Promise<Commune[]> {
   try {
     const url = wilayaId 
       ? `${API_BASE}/communes?wilaya_id=${wilayaId}`
@@ -108,6 +114,11 @@ export async function getCommunes(wilayaId?: number): Promise<Commune[]> {
 }
 
 export async function getDeliveryFees(): Promise<DeliveryFee[]> {
+  return getAllDeliveryFees();
+}
+
+// Alias for backward compatibility
+export async function getAllDeliveryFees(): Promise<DeliveryFee[]> {
   try {
     const res = await fetch(`${API_BASE}/deliveryfees`, { headers });
     if (!res.ok) throw new Error('Failed to fetch delivery fees');
@@ -127,12 +138,42 @@ export async function calculateDeliveryFee(wilayaId: number, toHome: boolean = t
 
 export async function createParcel(parcel: ParcelInput): Promise<any> {
   try {
+    // Validate commune_id before sending to EasyAndSpeed
+    // Get communes for this wilaya to verify the commune_id is valid
+    const communes = await getCommunes(parcel.to_wilaya_id);
+    const validCommune = communes.find(c => c.id === parcel.to_commune_id);
+    
+    let finalParcel = { ...parcel };
+    
+    if (!validCommune) {
+      // Commune ID not found - try to find a valid commune for this wilaya
+      console.warn(`Invalid commune_id ${parcel.to_commune_id} for wilaya ${parcel.to_wilaya_id}. Looking for alternative...`);
+      
+      // Find the first deliverable commune for this wilaya
+      const deliverableCommune = communes.find(c => 
+        c.wilaya_id === parcel.to_wilaya_id && c.is_deliverable === 1
+      );
+      
+      if (deliverableCommune) {
+        console.log(`Using alternative commune: ${deliverableCommune.name} (ID: ${deliverableCommune.id})`);
+        finalParcel.to_commune_id = deliverableCommune.id;
+      } else {
+        throw new Error(`No valid commune found for wilaya ${parcel.to_wilaya_id}. Please check the commune selection.`);
+      }
+    }
+    
     const res = await fetch(`${API_BASE}/parcels`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(parcel),
+      body: JSON.stringify(finalParcel),
     });
-    if (!res.ok) throw new Error('Failed to create parcel');
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      const errorMsg = errorData.message || errorData.error || `HTTP ${res.status}`;
+      throw new Error(errorMsg);
+    }
+    
     return res.json();
   } catch (error) {
     console.error('EasyAndSpeed API error:', error);
