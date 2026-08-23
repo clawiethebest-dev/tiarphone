@@ -41,10 +41,13 @@ export const ALL_PRODUCTS: Product[] = [
     originalPrice: 28000,
     category: 'packets',
     images: [
+      '/packs/infinix-smart10-pack/main.jpg',
       '/packs/infinix-smart10-pack/phone.jpg',
       '/packs/infinix-smart10-pack/watch.jpg',
-      '/packs/infinix-smart10-pack/hishell-earbuds.webp',
       '/packs/infinix-smart10-pack/dunth-earbuds.jpg',
+      '/packs/infinix-smart10-pack/hishell-earbuds.jpg',
+      '/packs/infinix-smart10-pack/box1.jpg',
+      '/packs/infinix-smart10-pack/box2.jpg',
     ],
     specifications: {
       'Infinix Smart 10': 'هاتف 6.6" - 5000mAh',
