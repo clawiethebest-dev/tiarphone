@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     // Build order data with only columns that exist in the database
     // Based on actual orders table: id, created_at, customer_name, phone, wilaya, commune, address, delivery_type, total, status, notes
     const orderData = {
+      id: orderNumber,
       order_number: orderNumber,
       customer_name: finalCustomerName,
       phone: finalCustomerPhone,
