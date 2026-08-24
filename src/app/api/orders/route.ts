@@ -10,8 +10,11 @@ export async function POST(request: Request) {
       product_name,
       product_price,
       quantity,
+      // Support both old and new field names
       customer_name,
+      name,
       customer_phone,
+      phone1,
       wilaya_id,
       wilaya_name,
       commune_id,
@@ -25,8 +28,12 @@ export async function POST(request: Request) {
       landing_page,
     } = body;
 
+    // Handle field name variations from frontend
+    const finalCustomerName = customer_name || name;
+    const finalCustomerPhone = customer_phone || phone1;
+
     // Validate required fields
-    if (!customer_name || !customer_phone || !wilaya_id || !address) {
+    if (!finalCustomerName || !finalCustomerPhone || !wilaya_id || !address) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -38,15 +45,19 @@ export async function POST(request: Request) {
 
     const orderData = {
       id: orderNumber,
+      order_number: orderNumber,
       product_id,
       product_name,
       product_price,
       quantity: quantity || 1,
-      customer_name,
-      phone: customer_phone,
+      customer_name: finalCustomerName,
+      customer_phone: finalCustomerPhone,
+      phone: finalCustomerPhone,
       wilaya_id,
+      wilaya_name,
       wilaya: wilaya_name,
       commune_id,
+      commune_name,
       commune: commune_name,
       address,
       delivery_type: delivery_type || 'home',
