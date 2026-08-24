@@ -37,24 +37,22 @@ export async function POST(request: Request) {
     const orderNumber = `TBQ-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     const orderData = {
-      order_number: orderNumber,
+      id: orderNumber,
       product_id,
       product_name,
       product_price,
       quantity: quantity || 1,
       customer_name,
-      customer_phone,
+      phone: customer_phone,
       wilaya_id,
-      wilaya_name,
+      wilaya: wilaya_name,
       commune_id,
-      commune_name,
+      commune: commune_name,
       address,
       delivery_type: delivery_type || 'home',
       delivery_fee,
       total,
       notes,
-      traffic_source,
-      landing_page,
       status: 'pending',
       created_at: new Date().toISOString(),
     };
