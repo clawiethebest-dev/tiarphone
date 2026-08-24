@@ -152,9 +152,9 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [phoneSaved, setPhoneSaved] = useState(false);
 
-  // Load wilayas and communes from JSON
+  // Load wilayas on popup open
   useEffect(() => {
-    const loadData = async () => {
+    const loadWilayas = async () => {
       setIsLoading(true);
       try {
         const response = await fetch('/api/wilayas');
@@ -162,13 +162,13 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
         setWilayas(data.wilayas || []);
         setCommunes([]);
       } catch (error) {
-        console.error('Error loading location data:', error);
+        console.error('Error loading wilayas:', error);
       }
       setIsLoading(false);
     };
     
     if (isOpen) {
-      loadData();
+      loadWilayas();
       trackInitiateCheckout(product.price, 1);
       // Track popup open for spy
       tracker.trackPopupOpen(product.name, product.price);
@@ -176,9 +176,28 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
     }
   }, [isOpen, product]);
 
-  const filteredCommunes = communes.filter(
-    (c) => c.wilaya_id === parseInt(formData.wilaya_id)
-  );
+  // Load communes when wilaya changes
+  useEffect(() => {
+    const loadCommunes = async () => {
+      if (!formData.wilaya_id) {
+        setCommunes([]);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/delivery/communes?wilaya_id=${formData.wilaya_id}`);
+        const data = await response.json();
+        setCommunes(data.data || []);
+      } catch (error) {
+        console.error('Error loading communes:', error);
+        setCommunes([]);
+      }
+    };
+    
+    loadCommunes();
+  }, [formData.wilaya_id]);
+
+  // communes is already filtered by wilaya_id from the API
+  const filteredCommunes = communes;
 
   const selectedWilaya = wilayas.find(
     (w) => w.id === parseInt(formData.wilaya_id)
