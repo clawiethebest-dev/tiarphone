@@ -103,17 +103,41 @@ function AdminContent({ params }: PageProps) {
     fetchOrders();
   }, [isAuthenticated]);
 
-  // Fetch analytics
+  // Fetch analytics from analyze-logs API
   useEffect(() => {
     if (!isAuthenticated) return;
     
     async function fetchAnalytics() {
       setLoadingAnalytics(true);
       try {
-        const res = await fetch(`/api/analytics?period=${analyticsPeriod}&type=summary`);
+        const res = await fetch('/api/analyze-logs');
         const data = await res.json();
-        if (data.success) {
-          setAnalytics(data.data);
+        if (data.success && data.data) {
+          // Map the analyze-logs data to our analytics format
+          const summary = data.data;
+          setAnalytics({
+            period: analyticsPeriod,
+            summary: {
+              pageViews: summary.total_sessions || 0,
+              uniqueVisitors: summary.unique_visitors || 0,
+              productViews: summary.total_product_views || 0,
+              addToCarts: 0,
+              orders: summary.orders_completed || 0,
+              revenue: 0,
+              conversionRate: summary.total_sessions > 0 
+                ? `${((summary.orders_completed / summary.total_sessions) * 100).toFixed(1)}%`
+                : '0%',
+            },
+            funnel: {
+              pageViews: summary.total_sessions || 0,
+              productViews: summary.total_product_views || 0,
+              addToCarts: 0,
+              checkouts: summary.checkout_started || 0,
+              orders: summary.orders_completed || 0,
+            },
+            topSources: [],
+            topProducts: [],
+          });
         }
       } catch (error) {
         console.error('Error fetching analytics:', error);
@@ -507,6 +531,19 @@ function AdminContent({ params }: PageProps) {
             <div>
               <h3 className="font-bold text-gray-900">إعدادات المتجر</h3>
               <p className="text-sm text-gray-500">الإعدادات العامة</p>
+            </div>
+          </Link>
+
+          <Link
+            href={`/${locale}/admin/logs?key=${ADMIN_KEY}`}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition flex items-center gap-4"
+          >
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <ChartBarIcon className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900">📊 سجلات الزوار</h3>
+              <p className="text-sm text-gray-500">تتبع وتحليل السلوك</p>
             </div>
           </Link>
         </div>

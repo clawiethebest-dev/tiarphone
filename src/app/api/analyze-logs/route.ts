@@ -277,11 +277,11 @@ export async function POST(request: Request) {
   }
 }
 
-// GET: Get analysis summary
+// GET: Get analysis summary and data for admin
 export async function GET() {
   try {
     if (!isSupabaseConfigured() || !supabase) {
-      return NextResponse.json({ success: true, data: null });
+      return NextResponse.json({ success: true, data: null, sessions: [], raw_logs: [] });
     }
 
     // Get summary stats
@@ -291,27 +291,43 @@ export async function GET() {
     const { data: sessions, error } = await supabase
       .from('analyzed_sessions')
       .select('*')
-      .gte('first_seen', today.toISOString())
-      .order('last_seen', { ascending: false });
+      .order('last_seen', { ascending: false })
+      .limit(100);
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message });
+      console.error('Get sessions error:', error);
     }
 
+    // Get recent raw logs
+    const { data: rawLogs, error: rawError } = await supabase
+      .from('raw_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(200);
+
+    if (rawError) {
+      console.error('Get raw logs error:', rawError);
+    }
+
+    // Today's sessions for stats
+    const todaySessions = sessions?.filter(s => 
+      new Date(s.first_seen) >= today
+    ) || [];
+
     const summary = {
-      total_sessions: sessions?.length || 0,
-      unique_visitors: new Set(sessions?.map(s => s.ip)).size,
-      total_product_views: sessions?.reduce((sum, s) => sum + (s.products_viewed?.length || 0), 0) || 0,
-      checkout_started: sessions?.filter(s => s.checkout_started).length || 0,
-      orders_attempted: sessions?.filter(s => s.order_attempted).length || 0,
-      orders_completed: sessions?.filter(s => s.order_completed).length || 0,
-      lost_orders: sessions?.filter(s => s.lost_order).length || 0,
+      total_sessions: todaySessions.length,
+      unique_visitors: new Set(todaySessions.map(s => s.ip).filter(Boolean)).size,
+      total_product_views: todaySessions.reduce((sum, s) => sum + (s.products_viewed?.length || 0), 0),
+      checkout_started: todaySessions.filter(s => s.checkout_started).length,
+      orders_attempted: todaySessions.filter(s => s.order_attempted).length,
+      orders_completed: todaySessions.filter(s => s.order_completed).length,
+      lost_orders: todaySessions.filter(s => s.lost_order).length,
       by_device: {
-        mobile: sessions?.filter(s => s.device_type === 'mobile').length || 0,
-        tablet: sessions?.filter(s => s.device_type === 'tablet').length || 0,
-        desktop: sessions?.filter(s => s.device_type === 'desktop').length || 0,
+        mobile: todaySessions.filter(s => s.device_type === 'mobile').length,
+        tablet: todaySessions.filter(s => s.device_type === 'tablet').length,
+        desktop: todaySessions.filter(s => s.device_type === 'desktop').length,
       },
-      recent_lost_orders: sessions?.filter(s => s.lost_order).slice(0, 10).map(s => ({
+      recent_lost_orders: todaySessions.filter(s => s.lost_order).slice(0, 10).map(s => ({
         session_id: s.session_id,
         time: s.last_seen,
         journey: s.journey_summary,
@@ -320,9 +336,22 @@ export async function GET() {
       })),
     };
 
-    return NextResponse.json({ success: true, data: summary });
+    return NextResponse.json({ 
+      success: true, 
+      data: summary,
+      sessions: sessions || [],
+      raw_logs: rawLogs?.map(log => ({
+        id: log.id,
+        session_id: log.session_id,
+        timestamp: log.timestamp,
+        event_type: log.action,
+        event_data: log.data,
+        page_url: log.page,
+        user_agent: log.user_agent,
+      })) || [],
+    });
   } catch (error) {
     console.error('Get analysis error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to get analysis' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to get analysis', sessions: [], raw_logs: [] }, { status: 500 });
   }
 }

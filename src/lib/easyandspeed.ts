@@ -99,18 +99,13 @@ export async function getCommunes(wilayaId?: number): Promise<Commune[]> {
 
 // Alias for backward compatibility
 export async function getCommunesByWilaya(wilayaId?: number): Promise<Commune[]> {
-  try {
-    const url = wilayaId 
-      ? `${API_BASE}/communes?wilaya_id=${wilayaId}`
-      : `${API_BASE}/communes`;
-    const res = await fetch(url, { headers });
-    if (!res.ok) throw new Error('Failed to fetch communes');
-    return res.json();
-  } catch (error) {
-    console.error('EasyAndSpeed API error:', error);
-    // Return fallback data
-    return (FALLBACK_COMMUNES as any).communes || [];
+  // Use fallback data directly (API has rate limits and pagination issues)
+  const allCommunes: Commune[] = (FALLBACK_COMMUNES as any).communes || [];
+  
+  if (wilayaId) {
+    return allCommunes.filter(c => c.wilaya_id === wilayaId);
   }
+  return allCommunes;
 }
 
 export async function getDeliveryFees(): Promise<DeliveryFee[]> {
