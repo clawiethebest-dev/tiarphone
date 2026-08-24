@@ -112,3 +112,84 @@ export async function GET() {
     );
   }
 }
+
+// Update order status
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { orderId, status, tracking } = body;
+
+    if (!orderId || !status) {
+      return NextResponse.json(
+        { success: false, error: 'Missing orderId or status' },
+        { status: 400 }
+      );
+    }
+
+    if (!isSupabaseConfigured() || !supabase) {
+      return NextResponse.json({ success: false, error: 'Database not configured' });
+    }
+
+    const updateData: Record<string, string> = { status };
+    if (tracking) {
+      updateData.tracking = tracking;
+    }
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Supabase PATCH error:', error);
+      return NextResponse.json({ success: false, error: error.message });
+    }
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error('Update order error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update order' },
+      { status: 500 }
+    );
+  }
+}
+
+// Delete order
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { orderId } = body;
+
+    if (!orderId) {
+      return NextResponse.json(
+        { success: false, error: 'Missing orderId' },
+        { status: 400 }
+      );
+    }
+
+    if (!isSupabaseConfigured() || !supabase) {
+      return NextResponse.json({ success: false, error: 'Database not configured' });
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .eq('id', orderId);
+
+    if (error) {
+      console.error('Supabase DELETE error:', error);
+      return NextResponse.json({ success: false, error: error.message });
+    }
+
+    return NextResponse.json({ success: true, message: 'Order deleted' });
+  } catch (error) {
+    console.error('Delete order error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete order' },
+      { status: 500 }
+    );
+  }
+}
