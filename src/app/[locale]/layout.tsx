@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AnnouncementBar from '@/components/AnnouncementBar';
+import WhatsAppButton from '@/components/WhatsAppButton';
 import { AnalyticsProvider } from '@/components/AnalyticsProvider';
 import { PixelProvider } from '@/components/PixelProvider';
 import type { Locale } from '@/types';
@@ -77,6 +78,7 @@ export default async function LocaleLayout({
                 </Suspense>
               </main>
               <Footer lang={locale as Locale} t={t} />
+              <WhatsAppButton />
             </PixelProvider>
           </AnalyticsProvider>
         </NextIntlClientProvider>

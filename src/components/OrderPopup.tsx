@@ -149,6 +149,7 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [phoneSaved, setPhoneSaved] = useState(false);
 
   // Load wilayas and communes from JSON
   useEffect(() => {
@@ -214,6 +215,15 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
       });
 
       if (response.ok) {
+        // Mark checkout as completed
+        try {
+          await fetch('/api/abandoned-checkout', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: formData.phone1 }),
+          });
+        } catch (e) { /* ignore */ }
+        
         trackPurchase({ content_ids: [product.id], value: total, currency: 'DZD', num_items: 1 });
         trackLead();
         setOrderSuccess(true);
@@ -377,6 +387,28 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                       value={formData.phone1}
                       onChange={(e) => setFormData({ ...formData, phone1: e.target.value })}
+                      onBlur={async (e) => {
+                        // Save phone for abandoned checkout recovery
+                        const phone = e.target.value.replace(/\D/g, '');
+                        if (phone.length >= 9 && !phoneSaved) {
+                          setPhoneSaved(true);
+                          try {
+                            await fetch('/api/abandoned-checkout', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                phone,
+                                name: formData.name,
+                                product_id: product.id,
+                                product_name: product.name,
+                                product_price: product.price,
+                                wilaya_name: selectedWilaya?.name,
+                                lang,
+                              }),
+                            });
+                          } catch (e) { /* ignore */ }
+                        }
+                      }}
                     />
                     <p className="text-xs text-gray-500 mt-1">{t.phoneHint}</p>
                   </div>
