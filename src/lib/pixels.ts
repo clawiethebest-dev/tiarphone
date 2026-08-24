@@ -8,7 +8,7 @@
 // Facebook Pixel ID
 const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || '1035868502633279';
 // TikTok Pixel ID  
-const TT_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID || 'DA10P6BC77U9J4MASLAG';
+const TT_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID || 'D9SE8ARC77U40SOI9EG0';
 
 // Pixel configuration
 export const PIXEL_CONFIG = {

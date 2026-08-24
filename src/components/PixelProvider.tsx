@@ -9,7 +9,7 @@ import { storeTrafficSource } from '@/lib/traffic-source';
 const pixelConfig = {
   ...PIXEL_CONFIG,
   facebook: ['1035868502633279'],
-  tiktok: ['DA10P6BC77U9J4MASLAG'],
+  tiktok: ['D9SE8ARC77U40SOI9EG0'],
   snapchat: [],
   google: [],
   twitter: [],
