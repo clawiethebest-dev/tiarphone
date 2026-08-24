@@ -8,6 +8,7 @@ import AnnouncementBar from '@/components/AnnouncementBar';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { AnalyticsProvider } from '@/components/AnalyticsProvider';
 import { PixelProvider } from '@/components/PixelProvider';
+import { TrackerProvider } from '@/components/TrackerProvider';
 import type { Locale } from '@/types';
 
 const locales = ['ar', 'fr', 'en'];
@@ -68,8 +69,9 @@ export default async function LocaleLayout({
       </head>
       <body className="min-h-screen flex flex-col antialiased">
         <NextIntlClientProvider messages={messages}>
-          <AnalyticsProvider>
-            <PixelProvider>
+          <TrackerProvider>
+            <AnalyticsProvider>
+              <PixelProvider>
               <AnnouncementBar />
               <Header lang={locale as Locale} t={t} />
               <main className="flex-1">
@@ -79,8 +81,9 @@ export default async function LocaleLayout({
               </main>
               <Footer lang={locale as Locale} t={t} />
               <WhatsAppButton />
-            </PixelProvider>
-          </AnalyticsProvider>
+              </PixelProvider>
+            </AnalyticsProvider>
+          </TrackerProvider>
         </NextIntlClientProvider>
       </body>
     </html>
