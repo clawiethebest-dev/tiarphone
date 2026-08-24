@@ -34,6 +34,16 @@ interface AnalyzedSession {
   ip?: string;
   journey_summary: string;
   lost_order: boolean;
+  // Customer data for recovery
+  customer_name?: string;
+  customer_phone?: string;
+  customer_phone2?: string;
+  customer_wilaya?: string;
+  customer_commune?: string;
+  customer_address?: string;
+  product_name?: string;
+  product_quantity?: number;
+  order_total?: number;
 }
 
 // Analyze raw logs and extract meaningful events
@@ -68,43 +78,119 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
     let orderError: string | undefined;
     let totalClicks = 0;
     let maxScrollDepth = 0;
+    
+    // Customer data extraction
+    let customerName: string | undefined;
+    let customerPhone: string | undefined;
+    let customerPhone2: string | undefined;
+    let customerWilaya: string | undefined;
+    let customerCommune: string | undefined;
+    let customerAddress: string | undefined;
+    let productName: string | undefined;
+    let productQuantity: number | undefined;
+    let orderTotal: number | undefined;
 
     for (const log of sessionLogs) {
+      const data = log.data || {};
+      
       switch (log.action) {
         case 'click':
           totalClicks++;
-          // Check if click on "اشتر الآن" or similar
-          if (log.element_text?.includes('اشتر') || log.element_text?.includes('شراء')) {
+          if (log.element_text?.includes('اشتر') || log.element_text?.includes('شراء') ||
+              log.element_text?.includes('تأكيد') || log.element_text?.includes('طلب')) {
             checkoutStarted = true;
           }
           break;
 
         case 'product_view':
-          if (log.data?.productSlug) {
-            productsViewed.push(log.data.productSlug as string);
-          }
+          if (data.productSlug) productsViewed.push(data.productSlug as string);
+          if (data.productName) productName = data.productName as string;
           break;
 
         case 'add_to_cart':
-          if (log.data?.productSlug) {
-            addedToCart.push(log.data.productSlug as string);
-          }
+          if (data.productSlug) addedToCart.push(data.productSlug as string);
+          if (data.productName) productName = data.productName as string;
+          if (data.quantity) productQuantity = data.quantity as number;
           break;
 
         case 'checkout_start':
+        case 'popup_open':
           checkoutStarted = true;
+          if (data.productName) productName = data.productName as string;
+          if (data.total) orderTotal = data.total as number;
+          break;
+
+        case 'checkout_button_click':
+          checkoutStarted = true;
+          // Extract form data from checkout click
+          const formDataClick = data.formData as Record<string, unknown> || {};
+          if (formDataClick.name) customerName = formDataClick.name as string;
+          if (formDataClick.phone) customerPhone = formDataClick.phone as string;
+          if (formDataClick.phone2) customerPhone2 = formDataClick.phone2 as string;
+          if (formDataClick.wilaya) customerWilaya = formDataClick.wilaya as string;
+          if (formDataClick.commune) customerCommune = formDataClick.commune as string;
+          if (formDataClick.address) customerAddress = formDataClick.address as string;
+          if (formDataClick.product) productName = formDataClick.product as string;
+          if (formDataClick.total) orderTotal = formDataClick.total as number;
+          break;
+
+        case 'field_input':
+          // Extract individual field values
+          if (data.field === 'name' && data.value) customerName = data.value as string;
+          if (data.field === 'wilaya' && data.value) customerWilaya = data.value as string;
+          if (data.field === 'commune' && data.value) customerCommune = data.value as string;
+          if (data.field === 'address' && data.value) customerAddress = data.value as string;
+          if (data.field === 'phone2' && data.value) customerPhone2 = data.value as string;
           break;
 
         case 'phone_entered':
-        case 'input':
-          if (log.action === 'phone_entered' || log.data?.isPhone) {
-            phoneEntered = true;
-          }
+          phoneEntered = true;
+          if (data.phone) customerPhone = data.phone as string;
+          break;
+
+        case 'form_snapshot':
+        case 'popup_close':
+        case 'page_exit':
+          // Extract all form data from snapshots
+          const snapshotData = data as Record<string, unknown>;
+          if (snapshotData.name) customerName = snapshotData.name as string;
+          if (snapshotData.phone) customerPhone = snapshotData.phone as string;
+          if (snapshotData.phone2) customerPhone2 = snapshotData.phone2 as string;
+          if (snapshotData.wilaya) customerWilaya = snapshotData.wilaya as string;
+          if (snapshotData.commune) customerCommune = snapshotData.commune as string;
+          if (snapshotData.address) customerAddress = snapshotData.address as string;
+          if (snapshotData.product) productName = snapshotData.product as string;
+          if (snapshotData.quantity) productQuantity = snapshotData.quantity as number;
+          if (snapshotData.total) orderTotal = snapshotData.total as number;
+          
+          // Also check formData nested object
+          const formDataSnap = snapshotData.formData as Record<string, unknown> || {};
+          if (formDataSnap.name) customerName = formDataSnap.name as string;
+          if (formDataSnap.phone) customerPhone = formDataSnap.phone as string;
+          if (formDataSnap.phone2) customerPhone2 = formDataSnap.phone2 as string;
+          if (formDataSnap.wilaya) customerWilaya = formDataSnap.wilaya as string;
+          if (formDataSnap.commune) customerCommune = formDataSnap.commune as string;
+          if (formDataSnap.address) customerAddress = formDataSnap.address as string;
+          if (formDataSnap.product) productName = formDataSnap.product as string;
+          if (formDataSnap.total) orderTotal = formDataSnap.total as number;
           break;
 
         case 'order_attempt':
-        case 'form_submit':
           orderAttempted = true;
+          // Extract all order data
+          if (data.name) customerName = data.name as string;
+          if (data.phone) customerPhone = data.phone as string;
+          if (data.phone2) customerPhone2 = data.phone2 as string;
+          if (data.wilaya) customerWilaya = data.wilaya as string;
+          if (data.commune) customerCommune = data.commune as string;
+          if (data.address) customerAddress = data.address as string;
+          if (data.product) productName = data.product as string;
+          if (data.quantity) productQuantity = data.quantity as number;
+          if (data.total) orderTotal = data.total as number;
+          
+          const formDataAttempt = data.formData as Record<string, unknown> || {};
+          if (formDataAttempt.name) customerName = formDataAttempt.name as string;
+          if (formDataAttempt.phone) customerPhone = formDataAttempt.phone as string;
           break;
 
         case 'order_success':
@@ -112,18 +198,16 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
           break;
 
         case 'order_error':
-          orderError = log.error_message || log.data?.error as string;
+          orderError = log.error_message || data.error as string;
           break;
 
         case 'error':
         case 'promise_error':
-          if (log.error_message) {
-            errors.push(log.error_message);
-          }
+          if (log.error_message) errors.push(log.error_message);
           break;
 
         case 'scroll':
-          const depth = log.data?.depth as number;
+          const depth = data.depth as number;
           if (depth > maxScrollDepth) maxScrollDepth = depth;
           break;
       }
@@ -132,7 +216,7 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
     // Detect device type
     const ua = firstLog.user_agent?.toLowerCase() || '';
     let deviceType: 'mobile' | 'tablet' | 'desktop' = 'desktop';
-    if (ua.includes('mobile') || ua.includes('android') && !ua.includes('tablet')) {
+    if (ua.includes('mobile') || (ua.includes('android') && !ua.includes('tablet'))) {
       deviceType = 'mobile';
     } else if (ua.includes('tablet') || ua.includes('ipad')) {
       deviceType = 'tablet';
@@ -177,6 +261,16 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
       ip: firstLog.ip,
       journey_summary: journeyParts.join(' → ') || 'زيارة سريعة',
       lost_order: lostOrder,
+      // Customer data
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      customer_phone2: customerPhone2,
+      customer_wilaya: customerWilaya,
+      customer_commune: customerCommune,
+      customer_address: customerAddress,
+      product_name: productName,
+      product_quantity: productQuantity,
+      order_total: orderTotal,
     });
   }
 
@@ -184,22 +278,21 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
 }
 
 // POST: Run analysis
-export async function POST(request: Request) {
+export async function POST() {
   try {
     if (!isSupabaseConfigured() || !supabase) {
       return NextResponse.json({ success: false, error: 'Supabase not configured' });
     }
 
-    // Get unanalyzed logs from the last hour
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    // Get unanalyzed logs from the last 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     
     const { data: logs, error: fetchError } = await supabase
       .from('raw_logs')
       .select('*')
-      .is('analyzed_at', null)
-      .gte('timestamp', oneHourAgo)
+      .gte('timestamp', oneDayAgo)
       .order('timestamp', { ascending: true })
-      .limit(5000);
+      .limit(10000);
 
     if (fetchError) {
       console.error('Fetch logs error:', fetchError);
@@ -236,6 +329,16 @@ export async function POST(request: Request) {
           ip: session.ip,
           journey_summary: session.journey_summary,
           lost_order: session.lost_order,
+          // Customer data
+          customer_name: session.customer_name,
+          customer_phone: session.customer_phone,
+          customer_phone2: session.customer_phone2,
+          customer_wilaya: session.customer_wilaya,
+          customer_commune: session.customer_commune,
+          customer_address: session.customer_address,
+          product_name: session.product_name,
+          product_quantity: session.product_quantity,
+          order_total: session.order_total,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'session_id',
@@ -246,29 +349,28 @@ export async function POST(request: Request) {
       }
     }
 
-    // Mark logs as analyzed
-    const logIds = logs.map(l => l.id);
-    const { error: updateError } = await supabase
-      .from('raw_logs')
-      .update({ analyzed_at: new Date().toISOString() })
-      .in('id', logIds);
-
-    if (updateError) {
-      console.error('Update logs error:', updateError);
-    }
-
-    // Count lost orders
+    // Count lost orders with phone numbers
     const lostOrders = analyzed.filter(s => s.lost_order);
+    const lostOrdersWithPhone = lostOrders.filter(s => s.customer_phone);
 
     return NextResponse.json({
       success: true,
       logs_analyzed: logs.length,
       sessions_created: analyzed.length,
       lost_orders: lostOrders.length,
+      lost_orders_with_phone: lostOrdersWithPhone.length,
       lost_order_sessions: lostOrders.map(s => ({
         session_id: s.session_id,
         journey: s.journey_summary,
         products: s.products_viewed,
+        customer_name: s.customer_name,
+        customer_phone: s.customer_phone,
+        customer_phone2: s.customer_phone2,
+        customer_wilaya: s.customer_wilaya,
+        customer_commune: s.customer_commune,
+        customer_address: s.customer_address,
+        product_name: s.product_name,
+        order_total: s.order_total,
       })),
     });
   } catch (error) {
@@ -284,10 +386,7 @@ export async function GET() {
       return NextResponse.json({ success: true, data: null, sessions: [], raw_logs: [] });
     }
 
-    // Get summary stats
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    // Get all sessions
     const { data: sessions, error } = await supabase
       .from('analyzed_sessions')
       .select('*')
@@ -303,13 +402,15 @@ export async function GET() {
       .from('raw_logs')
       .select('*')
       .order('timestamp', { ascending: false })
-      .limit(200);
+      .limit(500);
 
     if (rawError) {
       console.error('Get raw logs error:', rawError);
     }
 
     // Today's sessions for stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const todaySessions = sessions?.filter(s => 
       new Date(s.first_seen) >= today
     ) || [];
@@ -322,6 +423,7 @@ export async function GET() {
       orders_attempted: todaySessions.filter(s => s.order_attempted).length,
       orders_completed: todaySessions.filter(s => s.order_completed).length,
       lost_orders: todaySessions.filter(s => s.lost_order).length,
+      lost_orders_with_phone: todaySessions.filter(s => s.lost_order && s.customer_phone).length,
       by_device: {
         mobile: todaySessions.filter(s => s.device_type === 'mobile').length,
         tablet: todaySessions.filter(s => s.device_type === 'tablet').length,
@@ -332,6 +434,14 @@ export async function GET() {
         time: s.last_seen,
         journey: s.journey_summary,
         products: s.products_viewed,
+        customer_name: s.customer_name,
+        customer_phone: s.customer_phone,
+        customer_phone2: s.customer_phone2,
+        customer_wilaya: s.customer_wilaya,
+        customer_commune: s.customer_commune,
+        customer_address: s.customer_address,
+        product_name: s.product_name,
+        order_total: s.order_total,
         error: s.order_error,
       })),
     };
@@ -339,7 +449,19 @@ export async function GET() {
     return NextResponse.json({ 
       success: true, 
       data: summary,
-      sessions: sessions || [],
+      sessions: sessions?.map(s => ({
+        ...s,
+        // Include customer data in response
+        customer_name: s.customer_name,
+        customer_phone: s.customer_phone,
+        customer_phone2: s.customer_phone2,
+        customer_wilaya: s.customer_wilaya,
+        customer_commune: s.customer_commune,
+        customer_address: s.customer_address,
+        product_name: s.product_name,
+        product_quantity: s.product_quantity,
+        order_total: s.order_total,
+      })) || [],
       raw_logs: rawLogs?.map(log => ({
         id: log.id,
         session_id: log.session_id,

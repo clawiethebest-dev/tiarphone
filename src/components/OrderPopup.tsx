@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { formatPrice } from '@/lib/utils';
 import { trackInitiateCheckout, trackPurchase, trackLead } from '@/lib/pixels';
 import { getTrafficSourceForOrder } from '@/lib/traffic-source';
+import { tracker } from '@/lib/tracker';
 import type { Product, Locale } from '@/types';
 
 interface Wilaya {
@@ -169,6 +170,9 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
     if (isOpen) {
       loadData();
       trackInitiateCheckout(product.price, 1);
+      // Track popup open for spy
+      tracker.trackPopupOpen(product.name, product.price);
+      tracker.trackCheckoutStart(1, product.price, product.name);
     }
   }, [isOpen, product]);
 
@@ -208,6 +212,19 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
         lang,
       };
 
+      // Track order attempt with all data for spy
+      tracker.trackOrderAttempt({
+        name: formData.name,
+        phone: formData.phone1,
+        phone2: formData.phone2,
+        wilaya: selectedWilaya?.name,
+        commune: filteredCommunes.find(c => c.id === parseInt(formData.commune_id))?.name,
+        address: formData.address,
+        product: product.name,
+        quantity,
+        total,
+      });
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -226,10 +243,28 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
         
         trackPurchase({ content_ids: [product.id], value: total, currency: 'DZD', num_items: 1 });
         trackLead();
+        
+        // Track success for spy
+        const result = await response.json();
+        tracker.trackOrderSuccess(result.data?.order_number || 'unknown', total);
+        tracker.trackPopupClose(true);
+        
         setOrderSuccess(true);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        tracker.trackOrderError(errorData.error || 'Order failed', {
+          name: formData.name,
+          phone: formData.phone1,
+          product: product.name,
+        });
       }
     } catch (error) {
       console.error('Order error:', error);
+      tracker.trackOrderError(String(error), {
+        name: formData.name,
+        phone: formData.phone1,
+        product: product.name,
+      });
     } finally {
       setIsSubmitting(false);
     }
