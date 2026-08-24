@@ -185,7 +185,7 @@ class UserTracker {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
     if (!target || !['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
 
-    const name = (target.name || target.id || target.placeholder || '').toLowerCase();
+    const name = (target.name || target.id || (target as HTMLInputElement).placeholder || '').toLowerCase();
     const type = (target as HTMLInputElement).type || 'text';
     const value = target.value;
     
