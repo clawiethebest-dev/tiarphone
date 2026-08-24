@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     const orderNumber = `TBQ-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
     // Build order data with only columns that exist in the database
+    // Based on actual orders table: id, created_at, customer_name, phone, wilaya, commune, address, delivery_type, total, status, notes
     const orderData = {
       order_number: orderNumber,
       customer_name: finalCustomerName,
@@ -54,12 +55,7 @@ export async function POST(request: Request) {
       delivery_type: delivery_type || 'home',
       total,
       status: 'pending',
-      items: JSON.stringify([{
-        product_name,
-        product_price,
-        quantity: quantity || 1
-      }]),
-      notes,
+      notes: notes || `${product_name} x${quantity || 1}`,
     };
 
     // Save to Supabase if configured
