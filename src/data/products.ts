@@ -38,7 +38,7 @@ export const ALL_PRODUCTS: Product[] = [
 🚚 **توصيل سريع لجميع الولايات**
 💯 **ضمان 6 أشهر على جميع المنتجات**`,
     price: 22000,
-    originalPrice: 28000,
+    originalPrice: 26000,
     category: 'packets',
     images: [
       'https://yibtnsivqbdjlecwgfwx.supabase.co/storage/v1/object/public/products/products/pack-infinix-smart10/main.jpg',
@@ -100,8 +100,8 @@ export const ALL_PRODUCTS: Product[] = [
 
 🚚 **توصيل سريع لجميع الولايات**
 💯 **ضمان على جميع المنتجات**`,
-    price: 24000,
-    originalPrice: 28000,
+    price: 24900,
+    originalPrice: 29000,
     category: 'packets',
     images: [
       '/packs/itel-a50-pack/itel-a50.jpg',
@@ -158,8 +158,8 @@ export const ALL_PRODUCTS: Product[] = [
 ✨ **جودة عالية** | **أسعار مناسبة** | **ضمان على المنتجات**
 
 🚚 **توصيل سريع لجميع الولايات**`,
-    price: 24000,
-    originalPrice: 28000,
+    price: 20650,
+    originalPrice: 25000,
     category: 'packets',
     images: [
       '/packs/pack-tech-main.jpg',
@@ -223,8 +223,8 @@ export const ALL_PRODUCTS: Product[] = [
 ✨ **كل ما تحتاجه في باك واحد!**
 
 🚚 **توصيل سريع لجميع الولايات**`,
-    price: 24000,
-    originalPrice: 28000,
+    price: 19900,
+    originalPrice: 24000,
     category: 'packets',
     images: [
       '/packs/reekoo-note-60/main.jpg',
@@ -268,8 +268,8 @@ export const ALL_PRODUCTS: Product[] = [
 
 🚚 **توصيل سريع لجميع الولايات**
 💯 **ضمان على جميع المنتجات**`,
-    price: 24000,
-    originalPrice: 28000,
+    price: 19700,
+    originalPrice: 24000,
     category: 'packets',
     images: [
       '/packs/media-phone/pack-main.jpg',
