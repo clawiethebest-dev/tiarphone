@@ -12,19 +12,12 @@ import FALLBACK_COMMUNES from '@/data/communes.json';
 
 const API_BASE = 'https://api.easyandspeed.app/v1';
 
-// Default credentials (can be overridden via settings)
-const DEFAULT_API_ID = '43111994324492430728';
-const DEFAULT_API_TOKEN = 'MQ0W3Zz4xgbuAdeHU9tfFTOyaLKvDVicGl7IrpqEYCBm2ko61wS8J5nRjhPsNX';
-
-// Get API credentials (from env or defaults)
-const API_ID = process.env.EASYANDSPEED_API_ID || DEFAULT_API_ID;
-const API_TOKEN = process.env.EASYANDSPEED_API_TOKEN || DEFAULT_API_TOKEN;
-
-const headers = {
-  'X-API-ID': API_ID,
-  'X-API-TOKEN': API_TOKEN,
+// Get API credentials from environment variables
+const getHeaders = () => ({
+  'X-API-ID': process.env.EASYANDSPEED_API_ID || '',
+  'X-API-TOKEN': process.env.EASYANDSPEED_API_TOKEN || '',
   'Content-Type': 'application/json',
-};
+});
 
 // Types
 export interface Wilaya {
@@ -84,7 +77,7 @@ export interface ParcelInput {
 // API Functions
 export async function getWilayas(): Promise<Wilaya[]> {
   try {
-    const res = await fetch(`${API_BASE}/wilayas`, { headers });
+    const res = await fetch(`${API_BASE}/wilayas`, { headers: getHeaders() });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) return data;
@@ -172,7 +165,7 @@ export async function createParcel(parcel: ParcelInput): Promise<any> {
 
     const res = await fetch(`${API_BASE}/parcels`, {
       method: 'POST',
-      headers,
+      headers: getHeaders(),
       body: JSON.stringify(payload),
     });
 

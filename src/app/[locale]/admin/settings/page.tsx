@@ -46,8 +46,8 @@ function SettingsContent({ params }: PageProps) {
 
   // EasyAndSpeed API settings (from Biskra - official pricing Aug 2026)
   const [deliverySettings, setDeliverySettings] = useState({
-    apiId: '43111994324492430728',
-    apiToken: 'MQ0W3Zz4xgbuAdeHU9tfFTOyaLKvDVicGl7IrpqEYCBm2ko61wS8J5nRjhPsNX',
+    apiId: '',
+    apiToken: '',
     zone0Home: 500,   // Biskra
     zone0Desk: 450,
     zone1Home: 600,   // Batna, M'Sila, Khenchela

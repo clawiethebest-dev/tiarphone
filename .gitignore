@@ -5,6 +5,16 @@ node_modules/
 .env
 .env.local
 .env*.local
-
-.vercel
 .env*
+!.env.example
+
+# Sensitive cookies and token caches
+*-cookies.json
+*cookies*.json
+communes-api.json
+backups/
+*.backup
+*.dump
+*.pem
+*.key
+credentials.json
