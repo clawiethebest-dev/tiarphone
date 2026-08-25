@@ -13,7 +13,9 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 
-const ADMIN_KEY = '***';
+import { ALL_PRODUCTS } from '@/data/products';
+
+const ADMIN_KEY = 'tiar2024';
 
 interface Product {
   id: string;
@@ -87,14 +89,35 @@ function ProductsContent({ params }: PageProps) {
     try {
       const response = await fetch('/api/products');
       const data = await response.json();
-      if (data.success) {
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         setProducts(data.data);
+        setLoading(false);
+        return;
       }
     } catch (error) {
       console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
     }
+    
+    // Fallback to static products list
+    setProducts(ALL_PRODUCTS.map(p => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      long_description: p.longDescription,
+      price: p.price,
+      original_price: p.originalPrice,
+      category: p.category,
+      images: p.images,
+      specifications: p.specifications,
+      in_stock: p.inStock,
+      stock: p.stock || 50,
+      featured: p.featured || false,
+      deal: p.deal || false,
+      rating: p.rating || 5,
+      reviews_count: p.reviewsCount || 0,
+    })));
+    setLoading(false);
   };
 
   const openCreateModal = () => {

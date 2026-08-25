@@ -35,10 +35,10 @@ function SettingsContent({ params }: PageProps) {
     algeriaOnly: true,
   });
 
-  // Multiple Pixels state
+  // Multiple Pixels state (defaults to active production pixels)
   const [pixels, setPixels] = useState({
-    facebook: [''],
-    tiktok: [''],
+    facebook: ['1035868502633279'],
+    tiktok: ['D9SE8ARC77U40SOI9EG0'],
     google: [''],
     snapchat: [''],
     twitter: [''],
@@ -63,6 +63,12 @@ function SettingsContent({ params }: PageProps) {
 
   useEffect(() => {
     params.then(p => setLocale(p.locale));
+    try {
+      const savedPixels = localStorage.getItem('tiar_pixels_config');
+      if (savedPixels) {
+        setPixels(JSON.parse(savedPixels));
+      }
+    } catch (e) { /* ignore */ }
   }, [params]);
 
   useEffect(() => {
@@ -106,11 +112,10 @@ function SettingsContent({ params }: PageProps) {
   };
 
   const handleSave = async () => {
-    // In production, save to database/API
-    console.log('Saving settings:', settings);
-    console.log('Saving pixels:', pixels);
-    console.log('Saving delivery settings:', deliverySettings);
-    
+    try {
+      localStorage.setItem('tiar_pixels_config', JSON.stringify(pixels));
+    } catch (e) { /* ignore */ }
+
     // Save delivery settings to API
     try {
       await fetch('/api/settings/delivery', {

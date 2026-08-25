@@ -1,27 +1,45 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { ALL_PRODUCTS } from '@/data/products';
 
 // GET all products
 export async function GET() {
   try {
-    if (!isSupabaseConfigured() || !supabase) {
-      return NextResponse.json({ success: false, error: 'Database not configured' });
+    if (isSupabaseConfigured() && supabase) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return NextResponse.json({ success: true, data });
+      }
     }
 
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Fallback to static products if DB table is empty or unconfigured
+    const formatted = ALL_PRODUCTS.map(p => ({
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      long_description: p.longDescription,
+      price: p.price,
+      original_price: p.originalPrice,
+      category: p.category,
+      images: p.images,
+      specifications: p.specifications,
+      in_stock: p.inStock,
+      stock: p.stock || 50,
+      featured: p.featured || false,
+      deal: p.deal || false,
+      rating: p.rating || 5,
+      reviews_count: p.reviewsCount || 0,
+    }));
 
-    if (error) {
-      console.error('Supabase GET products error:', error);
-      return NextResponse.json({ success: false, error: error.message });
-    }
-
-    return NextResponse.json({ success: true, data: data || [] });
+    return NextResponse.json({ success: true, data: formatted });
   } catch (error) {
     console.error('Get products error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch products' }, { status: 500 });
+    return NextResponse.json({ success: true, data: ALL_PRODUCTS });
   }
 }
 
