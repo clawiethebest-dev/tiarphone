@@ -145,16 +145,35 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     if (!isSupabaseConfigured() || !supabase) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const trackQuery = (searchParams.get('track') || searchParams.get('query') || '').trim();
+
+    let dbQuery = supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // If this is a customer tracking lookup
+    if (trackQuery) {
+      const cleanPhone = trackQuery.replace(/\D/g, '');
+      if (trackQuery.toUpperCase().startsWith('TBQ-') || trackQuery.toUpperCase().startsWith('ORD-')) {
+        dbQuery = dbQuery.or(`id.ilike.%${trackQuery}%,order_number.ilike.%${trackQuery}%`);
+      } else if (cleanPhone.length >= 8) {
+        const p9 = cleanPhone.slice(-9);
+        dbQuery = dbQuery.or(`phone.ilike.%${p9}%,phone2.ilike.%${p9}%`);
+      } else {
+        dbQuery = dbQuery.or(`id.ilike.%${trackQuery}%,customer_name.ilike.%${trackQuery}%`);
+      }
+      dbQuery = dbQuery.limit(5);
+    }
+
+    const { data, error } = await dbQuery;
 
     if (error) {
       console.error('Supabase GET error:', error);
@@ -192,11 +211,16 @@ export async function GET() {
       
       return {
         ...order,
+        order_number: order.order_number || order.id,
         wilaya: wilayaName || 'الجزائر',
         wilaya_id: wilayaId || 16,
         products_text: productsText,
       };
     });
+
+    if (trackQuery) {
+      return NextResponse.json({ success: true, orders: enrichedOrders });
+    }
 
     return NextResponse.json({ success: true, data: enrichedOrders });
   } catch (error) {

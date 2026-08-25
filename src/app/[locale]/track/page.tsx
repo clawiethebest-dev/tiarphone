@@ -43,7 +43,7 @@ export default function TrackOrderPage() {
     setOrders(null);
 
     try {
-      const res = await fetch(`/api/track?query=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(`/api/orders?track=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
 
       if (data.success && data.orders) {
