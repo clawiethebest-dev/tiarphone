@@ -17,8 +17,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { ALL_PRODUCTS } from '@/data/products';
 
-const ADMIN_KEY = 'tiar2024';
-const ADMIN_PASSWORD = 'naza2024';
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'tiar2024';
+const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'naza2024';
 
 interface Order {
   id: string;

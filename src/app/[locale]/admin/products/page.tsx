@@ -15,7 +15,7 @@ import {
 
 import { ALL_PRODUCTS } from '@/data/products';
 
-const ADMIN_KEY = 'tiar2024';
+const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'tiar2024';
 
 interface Product {
   id: string;

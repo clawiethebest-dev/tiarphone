@@ -2,9 +2,6 @@
 
 > متجر إلكتروني تجاري متكامل ومتقدم مخصص للسوق الجزائري (e-Commerce & COD System)، مبني بأحدث التقنيات ومرتبط بنظام التوصيل والشحن **EasyAndSpeed** وقاعدة بيانات **Supabase** ونظام ذكي لمراقبة الزوار وتحسين معدل التحويل (CRO).
 
-🌐 **الموقع الحي:** [https://www.tiarboutique.shop](https://www.tiarboutique.shop)  
-🔐 **لوحة الإدارة:** [https://www.tiarboutique.shop/ar/admin?key=tiar2024](https://www.tiarboutique.shop/ar/admin?key=tiar2024)
-
 ---
 
 ## 🌟 أبرز المميزات والخصائص الجديدة
@@ -122,35 +119,31 @@ tiarphone-full/
 # 1. تثبيت الحزم
 npm install
 
-# 2. تشغيل خادم التطوير
+# 2. إعداد ملف البيئة
+cp .env.example .env.local
+
+# 3. تشغيل خادم التطوير المحلي
 npm run dev
 
-# 3. بناء نسخة الإنتاج
+# 4. بناء نسخة الإنتاج
 npm run build
 ```
 
 ---
 
-## ☁️ النشر على Vercel (Production Deployment)
+## 🔐 إعداد لوحة الإدارة (Admin Security Setup)
 
-```bash
-# نشر مباشر للإنتاج
-vercel --prod
-```
-
----
-
-## 🔐 بيانات الوصول للوحة الإدارة (Admin Credentials)
-
-- **رابط اللوحة:** `https://www.tiarboutique.shop/ar/admin?key=tiar2024`
-- **مفتاح الرابط (Admin Key):** `tiar2024`
-- **كلمة مرور الإدارة (Password):** `naza2024`
+- يتم الوصول للوحة الإدارة عبر المسار: `/{locale}/admin?key=YOUR_ADMIN_KEY`
+- يتم ضبط مفتاح الدخول وكلمة المرور عبر متغيرات البيئة السرية في ملف `.env.local` أو في إعدادات الاستضافة:
+  ```env
+  NEXT_PUBLIC_ADMIN_KEY=your_secret_admin_key
+  NEXT_PUBLIC_ADMIN_PASSWORD=your_secret_password
+  ```
 
 ---
 
 ## 📞 الدعم والتواصل
 
-- **المتجر:** [Tiar Boutique - الجزائر](https://www.tiarboutique.shop)
 - **Instagram:** [@tiar.boutique07](https://www.instagram.com/tiar.boutique07)
 - **TikTok:** [@tiarmohamed07](https://www.tiktok.com/@tiarmohamed07)
 - **Facebook:** [Tiar Boutique Store](https://www.facebook.com/share/1EZuNXHhTC/)
