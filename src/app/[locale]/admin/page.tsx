@@ -51,6 +51,7 @@ interface AnalyticsData {
   };
   topSources: { source: string; count: number }[];
   topProducts: { id: string; name: string; views: number }[];
+  topWilayas?: { id: number; name: string; count: number; percentage: number }[];
 }
 
 interface PageProps {
@@ -70,7 +71,64 @@ function AdminContent({ params }: PageProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
-  const [analyticsPeriod, setAnalyticsPeriod] = useState('7d');
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('all');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastOrderCount, setLastOrderCount] = useState<number | null>(null);
+  const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
+
+  // UTM Generator States
+  const [utmProduct, setUtmProduct] = useState(ALL_PRODUCTS[0]?.slug || 'pack-infinix-smart10');
+  const [utmPlatform, setUtmPlatform] = useState('tiktok');
+  const [utmCampaignName, setUtmCampaignName] = useState('promo_spring');
+  const [utmCopied, setUtmCopied] = useState(false);
+
+  const getGeneratedUtmLink = () => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.tiarboutique.shop';
+    return `${baseUrl}/${locale}/products/${utmProduct}?utm_source=${encodeURIComponent(utmPlatform)}&utm_medium=paid_ad&utm_campaign=${encodeURIComponent(utmCampaignName || 'campaign')}`;
+  };
+
+  const copyUtmLink = () => {
+    const link = getGeneratedUtmLink();
+    if (typeof navigator !== 'undefined') {
+      navigator.clipboard.writeText(link);
+      setUtmCopied(true);
+      setTimeout(() => setUtmCopied(false), 3000);
+    }
+  };
+
+  // Play pleasant chime for new orders using Web Audio API
+  const playNewOrderSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1320, now + 0.15);
+      gain2.gain.setValueAtTime(0.3, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.6);
+    } catch (e) {
+      console.warn('Audio play error:', e);
+    }
+  };
 
   useEffect(() => {
     params.then(p => setLocale(p.locale));
@@ -83,25 +141,41 @@ function AdminContent({ params }: PageProps) {
     }
   }, [searchParams]);
 
-  // Fetch orders
+  // Fetch orders with live polling (C1)
+  const fetchOrders = async (isPolling = false) => {
+    try {
+      const res = await fetch('/api/orders');
+      const data = await res.json();
+      if (data.success) {
+        const newOrders: Order[] = data.data || [];
+        if (isPolling && lastOrderCount !== null && newOrders.length > lastOrderCount) {
+          const newest = newOrders[0];
+          if (soundEnabled) {
+            playNewOrderSound();
+          }
+          setNewOrderAlert(`🔔 وصل طلب جديد الآن: ${newest.customer_name} (${newest.total?.toLocaleString()} د.ج)`);
+          setTimeout(() => setNewOrderAlert(null), 8000);
+        }
+        setOrders(newOrders);
+        setLastOrderCount(newOrders.length);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    async function fetchOrders() {
-      try {
-        const res = await fetch('/api/orders');
-        const data = await res.json();
-        if (data.success) {
-          setOrders(data.data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-      } finally {
-        setLoadingOrders(false);
-      }
-    }
-    fetchOrders();
-  }, [isAuthenticated]);
+    fetchOrders(false);
+
+    const interval = setInterval(() => {
+      fetchOrders(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, lastOrderCount, soundEnabled]);
 
   // Fetch analytics from analyze-logs API
   useEffect(() => {
@@ -110,33 +184,38 @@ function AdminContent({ params }: PageProps) {
     async function fetchAnalytics() {
       setLoadingAnalytics(true);
       try {
-        const res = await fetch('/api/analyze-logs');
+        const res = await fetch(`/api/analyze-logs?period=${analyticsPeriod}`);
         const data = await res.json();
         if (data.success && data.data) {
-          // Map the analyze-logs data to our analytics format
           const summary = data.data;
+          const totalSessions = summary.total_sessions || 0;
+          const pageViews = summary.total_page_views || totalSessions;
+          const completedOrders = summary.orders_completed || orders.length || 0;
+          const conversionRate = totalSessions > 0 
+            ? `${((completedOrders / totalSessions) * 100).toFixed(1)}%` 
+            : '0%';
+
           setAnalytics({
             period: analyticsPeriod,
             summary: {
-              pageViews: summary.total_sessions || 0,
+              pageViews: pageViews,
               uniqueVisitors: summary.unique_visitors || 0,
               productViews: summary.total_product_views || 0,
-              addToCarts: 0,
-              orders: summary.orders_completed || 0,
-              revenue: 0,
-              conversionRate: summary.total_sessions > 0 
-                ? `${((summary.orders_completed / summary.total_sessions) * 100).toFixed(1)}%`
-                : '0%',
+              addToCarts: summary.add_to_cart || summary.checkout_started || 0,
+              orders: completedOrders,
+              revenue: summary.revenue || 0,
+              conversionRate: conversionRate,
             },
             funnel: {
-              pageViews: summary.total_sessions || 0,
+              pageViews: pageViews,
               productViews: summary.total_product_views || 0,
-              addToCarts: 0,
+              addToCarts: summary.add_to_cart || summary.checkout_started || 0,
               checkouts: summary.checkout_started || 0,
-              orders: summary.orders_completed || 0,
+              orders: completedOrders,
             },
-            topSources: [],
-            topProducts: [],
+            topSources: summary.top_sources || [],
+            topProducts: summary.top_products || [],
+            topWilayas: summary.top_wilayas || [],
           });
         }
       } catch (error) {
@@ -146,7 +225,7 @@ function AdminContent({ params }: PageProps) {
       }
     }
     fetchAnalytics();
-  }, [isAuthenticated, analyticsPeriod]);
+  }, [isAuthenticated, analyticsPeriod, orders.length]);
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -196,24 +275,59 @@ function AdminContent({ params }: PageProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-gray-900">لوحة التحكم</h1>
-            <span className="text-sm text-gray-500 bg-green-100 text-green-700 px-2 py-1 rounded-full">
-              ✅ بيانات حقيقية
+            <span className="text-xs text-gray-600 bg-green-100 text-green-800 px-2.5 py-1 rounded-full font-bold">
+              ✅ مراقبة حية مباشرة
             </span>
           </div>
-          <Link
-            href={`/${locale}`}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-            <span>تسجيل الخروج</span>
-          </Link>
+
+          <div className="flex items-center gap-3">
+            {/* Sound Toggle */}
+            <button
+              onClick={() => {
+                const next = !soundEnabled;
+                setSoundEnabled(next);
+                if (next) playNewOrderSound();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                soundEnabled 
+                  ? 'bg-green-100 text-green-800 border border-green-300' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-200'
+              }`}
+              title={soundEnabled ? 'التنبيه الصوتي مفعل للطلبات الجديدة' : 'التنبيه الصوتي مكتوم'}
+            >
+              <span>{soundEnabled ? '🔔 التنبيه الصوتي مفعل' : '🔕 التنبيه مكتوم'}</span>
+            </button>
+
+            <Link
+              href={`/${locale}`}
+              className="flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-xs font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition"
+            >
+              <ArrowRightOnRectangleIcon className="w-4 h-4" />
+              <span>المتجر</span>
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-6">
+        {/* Live New Order Alert Banner */}
+        {newOrderAlert && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold text-sm shadow-xl flex items-center justify-between animate-bounce">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔔</span>
+              <span>{newOrderAlert}</span>
+            </div>
+            <button 
+              onClick={() => setNewOrderAlert(null)}
+              className="text-xs bg-white/20 hover:bg-white/30 px-2.5 py-1 rounded-lg"
+            >
+              إغلاق
+            </button>
+          </div>
+        )}
         {/* Analytics Period Selector */}
         <div className="flex gap-2 mb-6">
           {[
@@ -349,90 +463,221 @@ function AdminContent({ params }: PageProps) {
             )}
           </div>
 
-          {/* Traffic Sources */}
+          {/* Traffic Sources & UTM Tracker */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <GlobeAltIcon className="w-5 h-5 text-brand-600" />
+                  مصادر الزيارات وتتبع الإعلانات (UTM Tracking)
+                </h2>
+                <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-bold border border-blue-200">
+                  مباشر من TikTok / Facebook / Google
+                </span>
+              </div>
+
+              {loadingAnalytics ? (
+                <div className="animate-pulse space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              ) : analytics?.topSources && analytics.topSources.length > 0 ? (
+                <div className="space-y-3">
+                  {analytics.topSources.map((source, idx) => {
+                    const sourceIcons: Record<string, string> = {
+                      facebook: '📘',
+                      instagram: '📸',
+                      tiktok: '🎵',
+                      google: '🔍',
+                      direct: '🔗',
+                      referral: '🌐',
+                    };
+                    const sourceColors: Record<string, string> = {
+                      facebook: 'bg-blue-500',
+                      instagram: 'bg-pink-500',
+                      tiktok: 'bg-black',
+                      google: 'bg-red-500',
+                      direct: 'bg-gray-600',
+                      referral: 'bg-indigo-500',
+                    };
+                    const totalSourceVisits = analytics.topSources.reduce((sum, s) => sum + s.count, 0) || 1;
+                    const percent = Math.round((source.count / totalSourceVisits) * 100);
+
+                    return (
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <span className="text-2xl">{sourceIcons[source.source] || '🌐'}</span>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-center text-sm font-bold">
+                            <span className="text-gray-900 capitalize">
+                              {source.source === 'tiktok' ? '🎵 إعلانات تيك توك (TikTok Ads)' :
+                               source.source === 'facebook' ? '📘 إعلانات فيسبوك (Facebook Ads)' :
+                               source.source === 'instagram' ? '📸 إنستغرام (Instagram Ads)' :
+                               source.source === 'google' ? '🔍 إعلانات جوجل (Google Ads)' :
+                               source.source === 'direct' ? '🔗 زيارات مباشرة (Direct Traffic)' : source.source}
+                            </span>
+                            <span className="text-brand-600 font-mono">{source.count} زيارة ({percent}%)</span>
+                          </div>
+                          <div className="h-2 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${sourceColors[source.source] || 'bg-brand-500'} transition-all duration-500`}
+                              style={{
+                                width: `${Math.max(percent, 4)}%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-500">
+                  <GlobeAltIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">لا توجد بيانات زيارات إعلانية مسجلة حتى الآن</p>
+                </div>
+              )}
+            </div>
+
+            {/* Interactive UTM Campaign Link Builder Tool (C4) */}
+            <div className="pt-5 border-t border-gray-100 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <h3 className="text-sm font-bold text-gray-900 mb-1 flex items-center gap-1.5">
+                <span>🛠️</span>
+                <span>مولّد روابط الإعلانات المتبوعة (UTM Campaign Link Builder)</span>
+              </h3>
+              <p className="text-xs text-gray-500 mb-3">
+                أنشئ رابط إعلان مخصص وضعه في TikTok Ads Manager أو Facebook Ads لمعرفة مصدر كل طلب بدقة:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
+                <div>
+                  <label className="text-[11px] text-gray-500 font-bold block mb-1">المنتج المستهدف:</label>
+                  <select
+                    value={utmProduct}
+                    onChange={e => setUtmProduct(e.target.value)}
+                    className="w-full text-xs font-medium px-2.5 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:border-brand-500"
+                  >
+                    {ALL_PRODUCTS.map(p => (
+                      <option key={p.slug} value={p.slug}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-gray-500 font-bold block mb-1">منصة الإعلانات:</label>
+                  <select
+                    value={utmPlatform}
+                    onChange={e => setUtmPlatform(e.target.value)}
+                    className="w-full text-xs font-medium px-2.5 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:border-brand-500"
+                  >
+                    <option value="tiktok">🎵 TikTok Ads (تيك توك)</option>
+                    <option value="facebook">📘 Facebook Ads (فيسبوك)</option>
+                    <option value="instagram">📸 Instagram Ads (إنستغرام)</option>
+                    <option value="google">🔍 Google Ads (جوجل)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-gray-500 font-bold block mb-1">اسم الحملة الإعلانية:</label>
+                  <input
+                    type="text"
+                    value={utmCampaignName}
+                    onChange={e => setUtmCampaignName(e.target.value)}
+                    placeholder="مثال: campaign_pack_1"
+                    className="w-full text-xs font-medium px-2.5 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+
+              {/* Generated Link Box */}
+              <div className="bg-white p-2.5 rounded-xl border border-blue-200 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <span className="text-[11px] text-gray-400 block leading-none mb-1">الرابط المتبع الجاهز للنسخ:</span>
+                  <p className="text-xs font-mono text-brand-700 truncate select-all">{getGeneratedUtmLink()}</p>
+                </div>
+                <button
+                  onClick={copyUtmLink}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 flex-shrink-0 ${
+                    utmCopied 
+                      ? 'bg-green-600 text-white' 
+                      : 'bg-brand-600 hover:bg-brand-700 text-white shadow-sm'
+                  }`}
+                >
+                  <span>{utmCopied ? '✅ تم النسخ بنجاح' : '📋 نسخ الرابط'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Products & Top Wilayas Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Top Products Viewed */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <GlobeAltIcon className="w-5 h-5" />
-              مصادر الزيارات
-            </h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">🔥 أكثر المنتجات مشاهدة</h2>
             {loadingAnalytics ? (
-              <div className="animate-pulse space-y-3">
+              <div className="animate-pulse space-y-2">
                 {[1, 2, 3].map(i => (
                   <div key={i} className="h-12 bg-gray-200 rounded"></div>
                 ))}
               </div>
-            ) : analytics?.topSources && analytics.topSources.length > 0 ? (
-              <div className="space-y-3">
-                {analytics.topSources.map((source, idx) => {
-                  const sourceIcons: Record<string, string> = {
-                    facebook: '📘',
-                    instagram: '📸',
-                    tiktok: '🎵',
-                    google: '🔍',
-                    direct: '🔗',
-                  };
-                  const sourceColors: Record<string, string> = {
-                    facebook: 'bg-blue-500',
-                    instagram: 'bg-pink-500',
-                    tiktok: 'bg-black',
-                    google: 'bg-red-500',
-                    direct: 'bg-gray-500',
-                  };
-                  return (
-                    <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <span className="text-2xl">{sourceIcons[source.source] || '🌐'}</span>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 capitalize">{source.source}</p>
-                        <div className="h-2 bg-gray-200 rounded-full mt-1">
-                          <div
-                            className={`h-full rounded-full ${sourceColors[source.source] || 'bg-brand-500'}`}
-                            style={{
-                              width: `${(source.count / (analytics.topSources[0]?.count || 1)) * 100}%`,
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                      <span className="font-bold text-gray-700">{source.count}</span>
+            ) : analytics?.topProducts && analytics.topProducts.length > 0 ? (
+              <div className="space-y-2.5">
+                {analytics.topProducts.map((product, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <span className="w-7 h-7 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center font-bold text-xs">
+                        {idx + 1}
+                      </span>
+                      <span className="font-bold text-sm text-gray-900">{product.name}</span>
                     </div>
-                  );
-                })}
+                    <span className="font-extrabold text-sm text-brand-600 font-mono">{product.views} مشاهدة</span>
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <GlobeAltIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>لا توجد بيانات بعد</p>
-                <p className="text-sm mt-1">استخدم UTM parameters في روابط الإعلانات</p>
+              <p className="text-center py-4 text-gray-500 text-sm">لا توجد مشاهدات بعد</p>
+            )}
+          </div>
+
+          {/* Top Wilayas (Geographic Intelligence) */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span>🗺️</span>
+              <span>أكثر الولايات نشاطاً ودخولاً (Algeria Geo-Tracking)</span>
+            </h2>
+            {loadingAnalytics ? (
+              <div className="animate-pulse space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            ) : analytics?.topWilayas && analytics.topWilayas.length > 0 ? (
+              <div className="space-y-2.5">
+                {analytics.topWilayas.map((wilaya, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-1.5">
+                    <div className="flex justify-between items-center text-sm font-bold">
+                      <span className="text-gray-900 flex items-center gap-2">
+                        <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-mono">#{idx + 1}</span>
+                        <span>{wilaya.name}</span>
+                      </span>
+                      <span className="text-emerald-700 font-mono text-xs">{wilaya.count} زيارة ({wilaya.percentage}%)</span>
+                    </div>
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                        style={{ width: `${Math.max(wilaya.percentage, 5)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500 text-sm">
+                <p>جاري تسجيل مواقع ومدن الزوار عبر الـ IP...</p>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Top Products Viewed */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">🔥 أكثر المنتجات مشاهدة</h2>
-          {loadingAnalytics ? (
-            <div className="animate-pulse space-y-2">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-12 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          ) : analytics?.topProducts && analytics.topProducts.length > 0 ? (
-            <div className="space-y-2">
-              {analytics.topProducts.map((product, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
-                    <span className="font-medium">{product.name}</span>
-                  </div>
-                  <span className="font-bold text-gray-600">{product.views} مشاهدة</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center py-4 text-gray-500">لا توجد مشاهدات بعد</p>
-          )}
         </div>
 
         {/* Recent Orders */}

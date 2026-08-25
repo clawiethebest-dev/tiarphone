@@ -13,7 +13,10 @@ import type { Product, Locale } from '@/types';
 
 interface Wilaya {
   id: number;
+  code?: string;
   name: string;
+  name_ar?: string;
+  display_name?: string;
   home_fee: number;
   desk_fee: number;
   is_deliverable: boolean;
@@ -217,7 +220,12 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
     setIsSubmitting(true);
 
     try {
-      const trafficSource = getTrafficSourceForOrder();
+      let trafficSourceData: { traffic_source: string; landing_page: string } = { traffic_source: 'direct', landing_page: '/' };
+      try {
+        trafficSourceData = getTrafficSourceForOrder();
+      } catch (e) { /* ignore adblock */ }
+      
+      const selectedCommune = filteredCommunes.find(c => c.id === parseInt(formData.commune_id));
       
       const orderData = {
         ...formData,
@@ -226,23 +234,29 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
         quantity,
         product_price: product.price,
         delivery_fee: deliveryFee,
+        subtotal: productPrice,
         total,
-        traffic_source: trafficSource,
+        wilaya_name: selectedWilaya?.name || '',
+        commune_name: selectedCommune?.name || '',
+        traffic_source: trafficSourceData.traffic_source,
+        landing_page: trafficSourceData.landing_page,
         lang,
       };
 
-      // Track order attempt with all data for spy
-      tracker.trackOrderAttempt({
-        name: formData.name,
-        phone: formData.phone1,
-        phone2: formData.phone2,
-        wilaya: selectedWilaya?.name,
-        commune: filteredCommunes.find(c => c.id === parseInt(formData.commune_id))?.name,
-        address: formData.address,
-        product: product.name,
-        quantity,
-        total,
-      });
+      // Safely track order attempt for adblock immunity
+      try {
+        tracker.trackOrderAttempt({
+          name: formData.name,
+          phone: formData.phone1,
+          phone2: formData.phone2,
+          wilaya: selectedWilaya?.name,
+          commune: filteredCommunes.find(c => c.id === parseInt(formData.commune_id))?.name,
+          address: formData.address,
+          product: product.name,
+          quantity,
+          total,
+        });
+      } catch (e) { /* ignore adblock */ }
 
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -260,30 +274,39 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
           });
         } catch (e) { /* ignore */ }
         
-        trackPurchase({ content_ids: [product.id], value: total, currency: 'DZD', num_items: 1 });
-        trackLead();
+        try {
+          trackPurchase({ content_ids: [product.id], value: total, currency: 'DZD', num_items: 1 });
+          trackLead();
+        } catch (e) { /* ignore adblock */ }
         
-        // Track success for spy
-        const result = await response.json();
-        tracker.trackOrderSuccess(result.data?.order_number || 'unknown', total);
-        tracker.trackPopupClose(true);
+        try {
+          const result = await response.json();
+          tracker.trackOrderSuccess(result.data?.order_number || 'unknown', total);
+          tracker.trackPopupClose(true);
+        } catch (e) { /* ignore adblock */ }
         
         setOrderSuccess(true);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        tracker.trackOrderError(errorData.error || 'Order failed', {
+        try {
+          tracker.trackOrderError(errorData.error || 'Order failed', {
+            name: formData.name,
+            phone: formData.phone1,
+            product: product.name,
+          });
+        } catch (e) { /* ignore */ }
+        alert(errorData.error || 'حدث خطأ أثناء إرسال الطلب. يرجى المحاولة مرة أخرى.');
+      }
+    } catch (error) {
+      console.error('Order error:', error);
+      try {
+        tracker.trackOrderError(String(error), {
           name: formData.name,
           phone: formData.phone1,
           product: product.name,
         });
-      }
-    } catch (error) {
-      console.error('Order error:', error);
-      tracker.trackOrderError(String(error), {
-        name: formData.name,
-        phone: formData.phone1,
-        product: product.name,
-      });
+      } catch (e) { /* ignore */ }
+      alert('حدث خطأ في الاتصال. يرجى التحقق من اتصالك بالإنترنت والمحاولة مجدداً.');
     } finally {
       setIsSubmitting(false);
     }
@@ -369,10 +392,14 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                   </div>
                   
                   {/* Trust badges */}
-                  <div className="flex items-center gap-4 mt-3 text-sm">
-                    <span className="flex items-center gap-1">
+                  <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
+                    <span className="flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-lg">
                       <PhoneIcon className="w-4 h-4" />
                       {t.payOnDelivery}
+                    </span>
+                    <span className="flex items-center gap-1 bg-green-500/30 text-green-200 px-2.5 py-1 rounded-lg font-bold">
+                      <span>🔍</span>
+                      <span>معاينة وفحص الطرد قبل الدفع</span>
                     </span>
                   </div>
                 </div>
@@ -506,7 +533,7 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                       <option value="">{isLoading ? t.loading : t.selectWilaya}</option>
                       {wilayas.map((wilaya) => (
                         <option key={wilaya.id} value={wilaya.id}>
-                          {wilaya.name}
+                          {wilaya.display_name || (wilaya.name_ar ? `${wilaya.id.toString().padStart(2, '0')} - ${wilaya.name_ar} (${wilaya.name})` : `${wilaya.id.toString().padStart(2, '0')} - ${wilaya.name}`)}
                         </option>
                       ))}
                     </select>

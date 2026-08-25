@@ -11,6 +11,7 @@ interface Order {
   id: string;
   customer_name: string;
   phone: string;
+  phone2?: string;
   wilaya: string;
   wilaya_id: number;
   commune: string;
@@ -21,7 +22,7 @@ interface Order {
   delivery_fee: number;
   delivery_type: string;
   products_text: string;
-  status: 'new' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'new' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled' | string;
   tracking?: string;
   created_at: string;
   notes?: string;
@@ -40,6 +41,43 @@ function OrdersContent({ params }: PageProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lastOrderCount, setLastOrderCount] = useState<number | null>(null);
+  const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
+
+  // Play pleasant chime for new orders using Web Audio API (no external file required)
+  const playNewOrderSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, now); // A5
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.3);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1320, now + 0.15); // E6
+      gain2.gain.setValueAtTime(0.3, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.6);
+    } catch (e) {
+      console.warn('Audio play error:', e);
+    }
+  };
 
   useEffect(() => {
     params.then(p => setLocale(p.locale));
@@ -52,26 +90,102 @@ function OrdersContent({ params }: PageProps) {
     }
   }, [searchParams]);
 
-  // Fetch orders from API
+  // Fetch orders from API with live auto-polling every 10 seconds (C1)
+  const fetchOrders = async (isPolling = false) => {
+    try {
+      const response = await fetch('/api/orders');
+      const data = await response.json();
+      if (data.success) {
+        const newOrders: Order[] = data.data || [];
+        
+        // Check if a new order arrived
+        if (isPolling && lastOrderCount !== null && newOrders.length > lastOrderCount) {
+          const newest = newOrders[0];
+          if (soundEnabled) {
+            playNewOrderSound();
+          }
+          setNewOrderAlert(`🔔 وصل طلب جديد الآن: ${newest.customer_name} (${newest.total?.toLocaleString()} د.ج)`);
+          setTimeout(() => setNewOrderAlert(null), 8000);
+        }
+
+        setOrders(newOrders);
+        setLastOrderCount(newOrders.length);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    async function fetchOrders() {
-      try {
-        const response = await fetch('/api/orders');
-        const data = await response.json();
-        if (data.success) {
-          setOrders(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-      } finally {
-        setLoadingOrders(false);
-      }
+    fetchOrders(false);
+
+    // Live polling every 10s for immediate order detection
+    const interval = setInterval(() => {
+      fetchOrders(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, lastOrderCount, soundEnabled]);
+
+  // Export orders to CSV / Excel (C3)
+  const exportToCSV = () => {
+    if (orders.length === 0) {
+      alert('لا توجد طلبات لتصديرها');
+      return;
     }
-    
-    fetchOrders();
-  }, [isAuthenticated]);
+
+    const headers = [
+      'رقم الطلب',
+      'العميل',
+      'الهاتف',
+      'الهاتف 2',
+      'الولاية',
+      'البلدية',
+      'العنوان',
+      'المنتجات',
+      'المجموع الفرعي (د.ج)',
+      'رسوم التوصيل (د.ج)',
+      'المجموع الكلي (د.ج)',
+      'نوع التوصيل',
+      'الحالة',
+      'رقم التتبع',
+      'تاريخ الطلب',
+      'ملاحظات'
+    ];
+
+    const rows = orders.map(o => [
+      `"${o.id}"`,
+      `"${(o.customer_name || '').replace(/"/g, '""')}"`,
+      `"${o.phone}"`,
+      `"${o.phone2 || ''}"`,
+      `"${(o.wilaya || '').replace(/"/g, '""')}"`,
+      `"${(o.commune || '').replace(/"/g, '""')}"`,
+      `"${(o.address || '').replace(/"/g, '""')}"`,
+      `"${(o.products_text || '').replace(/"/g, '""')}"`,
+      o.subtotal || o.total,
+      o.delivery_fee || 0,
+      o.total,
+      o.delivery_type === 'home' ? 'باب المنزل' : 'المكتب',
+      getStatusText(o.status),
+      `"${o.tracking || ''}"`,
+      `"${new Date(o.created_at).toLocaleString('ar-DZ')}"`,
+      `"${(o.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    // UTF-8 BOM (\uFEFF) for Arabic Excel compatibility
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `tiar_orders_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Format phone number for EasyAndSpeed (must be 10 digits starting with 0)
   const formatPhoneNumber = (phone: string): string => {
@@ -124,7 +238,9 @@ function OrdersContent({ params }: PageProps) {
           address: order.address,
           to_commune_id: order.commune_id,
           to_wilaya_id: order.wilaya_id,
-          product_list: order.products_text,
+          wilaya_name: order.wilaya,
+          commune_name: order.commune,
+          product_list: order.products_text || 'هواتف وإكسسوارات',
           price: order.total,
           declared_value: order.total,
           freeshipping: false,
@@ -134,6 +250,7 @@ function OrdersContent({ params }: PageProps) {
       const data = await response.json();
 
       if (data.success) {
+        const trackingCode = data.data?.tracking || data.data?.tracking_code || 'EASY-' + order.id;
         // Update order in database
         await fetch('/api/orders', {
           method: 'PATCH',
@@ -141,7 +258,7 @@ function OrdersContent({ params }: PageProps) {
           body: JSON.stringify({
             orderId: order.id,
             status: 'shipped',
-            tracking: data.data.tracking,
+            tracking: trackingCode,
           }),
         });
         
@@ -149,22 +266,63 @@ function OrdersContent({ params }: PageProps) {
         setOrders(prev =>
           prev.map(o =>
             o.id === order.id
-              ? { ...o, status: 'shipped' as const, tracking: data.data.tracking }
+              ? { ...o, status: 'shipped' as const, tracking: trackingCode }
               : o
           )
         );
         setMessage({
           type: 'success',
-          text: `✅ تم تأكيد الطلب وإرساله في EasyAndSpeed! رقم التتبع: ${data.data.tracking}`,
+          text: `✅ تم تأكيد الطلب وإرساله في EasyAndSpeed! رقم التتبع: ${trackingCode}`,
         });
       } else {
-        throw new Error(data.error);
+        throw new Error(data.error || 'فشل الاتصال بشركة التوصيل');
       }
     } catch (error: any) {
       console.error('Error confirming order:', error);
       setMessage({
         type: 'error',
-        text: `❌ فشل إرسال الطلب: ${error.message}`,
+        text: `❌ فشل إرسال الطلب عبر EasyAndSpeed: ${error.message} (يمكنك التأكيد يدوياً)`,
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // Confirm order manually
+  const confirmOrderManually = async (order: Order) => {
+    setLoading(order.id);
+    setMessage(null);
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          status: 'confirmed',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setOrders(prev =>
+          prev.map(o =>
+            o.id === order.id ? { ...o, status: 'confirmed' as const } : o
+          )
+        );
+        setMessage({
+          type: 'success',
+          text: `✅ تم تأكيد الطلب ${order.id} يدوياً`,
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      console.error('Error confirming order manually:', error);
+      setMessage({
+        type: 'error',
+        text: `❌ فشل تأكيد الطلب: ${error.message}`,
       });
     } finally {
       setLoading(null);
@@ -272,9 +430,10 @@ function OrdersContent({ params }: PageProps) {
     );
   }
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: Order['status'] | string) => {
     switch (status) {
       case 'new':
+      case 'pending':
         return 'bg-yellow-100 text-yellow-700';
       case 'confirmed':
         return 'bg-blue-100 text-blue-700';
@@ -289,10 +448,12 @@ function OrdersContent({ params }: PageProps) {
     }
   };
 
-  const getStatusText = (status: Order['status']) => {
+  const getStatusText = (status: Order['status'] | string) => {
     switch (status) {
       case 'new':
         return 'جديد';
+      case 'pending':
+        return 'جديد (معلق)';
       case 'confirmed':
         return 'مؤكد';
       case 'shipped':
@@ -310,24 +471,72 @@ function OrdersContent({ params }: PageProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
             <Link
               href={`/${locale}/admin?key=${ADMIN_KEY}`}
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition"
             >
               <ArrowLeftIcon className="w-5 h-5" />
             </Link>
-            <h1 className="text-xl font-bold text-gray-900">إدارة الطلبات</h1>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">إدارة الطلبات</h1>
+              <p className="text-xs text-gray-500">مراقبة وتأكيد الشحنات المباشرة</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <TruckIcon className="w-5 h-5" />
-            <span>EasyAndSpeed مفعل</span>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Sound Toggle (C1) */}
+            <button
+              onClick={() => {
+                const next = !soundEnabled;
+                setSoundEnabled(next);
+                if (next) playNewOrderSound();
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                soundEnabled 
+                  ? 'bg-green-100 text-green-800 border border-green-300' 
+                  : 'bg-gray-100 text-gray-600 border border-gray-200'
+              }`}
+              title={soundEnabled ? 'التنبيه الصوتي مفعل للطلبات الجديدة' : 'التنبيه الصوتي مكتوم'}
+            >
+              <span>{soundEnabled ? '🔔 التنبيه الصوتي شغال' : '🔕 التنبيه مكتوم'}</span>
+            </button>
+
+            {/* Export CSV / Excel Button (C3) */}
+            <button
+              onClick={exportToCSV}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+              title="تصدير جميع الطلبات لملف Excel"
+            >
+              <span>📥</span>
+              <span>تصدير إلى Excel (CSV)</span>
+            </button>
+
+            <div className="flex items-center gap-1.5 text-xs text-gray-600 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200">
+              <TruckIcon className="w-4 h-4 text-blue-600" />
+              <span>EasyAndSpeed متصل</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-4 md:p-6">
+        {/* Live New Order Sound & Alert Banner (C1) */}
+        {newOrderAlert && (
+          <div className="mb-4 p-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-sm shadow-lg flex items-center justify-between animate-bounce">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🔔</span>
+              <span>{newOrderAlert}</span>
+            </div>
+            <button 
+              onClick={() => setNewOrderAlert(null)}
+              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded-md"
+            >
+              إغلاق
+            </button>
+          </div>
+        )}
         {/* Message */}
         {message && (
           <div
@@ -405,21 +614,32 @@ function OrdersContent({ params }: PageProps) {
                         >
                           <EyeIcon className="w-4 h-4" />
                         </button>
-                        {order.status === 'new' && (
-                          <button
-                            onClick={() => confirmOrder(order)}
-                            disabled={loading === order.id}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm disabled:opacity-50"
-                          >
-                            {loading === order.id ? (
-                              <span className="animate-spin">⏳</span>
-                            ) : (
-                              <CheckCircleIcon className="w-4 h-4" />
-                            )}
-                            <span>تأكيد</span>
-                          </button>
+                        {(order.status === 'new' || order.status === 'pending') && (
+                          <>
+                            <button
+                              onClick={() => confirmOrder(order)}
+                              disabled={loading === order.id}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm disabled:opacity-50 font-medium"
+                              title="تأكيد وإرسال لشركة التوصيل EasyAndSpeed"
+                            >
+                              {loading === order.id ? (
+                                <span className="animate-spin">⏳</span>
+                              ) : (
+                                <CheckCircleIcon className="w-4 h-4" />
+                              )}
+                              <span>تأكيد EasyAndSpeed</span>
+                            </button>
+                            <button
+                              onClick={() => confirmOrderManually(order)}
+                              disabled={loading === order.id}
+                              className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition text-sm disabled:opacity-50 font-medium"
+                              title="تأكيد يدوي بدون إرسال إلى EasyAndSpeed"
+                            >
+                              تأكيد يدوي
+                            </button>
+                          </>
                         )}
-                        {order.status === 'new' && (
+                        {(order.status === 'new' || order.status === 'pending') && (
                           <button 
                             onClick={() => cancelOrder(order)}
                             disabled={loading === order.id}
@@ -556,13 +776,19 @@ function OrdersContent({ params }: PageProps) {
             </div>
 
             <div className="p-6 border-t border-gray-100 space-y-3">
-              {selectedOrder.status === 'new' && (
-                <div className="flex gap-3">
+              {(selectedOrder.status === 'new' || selectedOrder.status === 'pending') && (
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => { confirmOrder(selectedOrder); setSelectedOrder(null); }}
-                    className="flex-1 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-bold"
+                    className="flex-1 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition font-bold text-center"
                   >
                     ✓ تأكيد وإرسال في EasyAndSpeed
+                  </button>
+                  <button
+                    onClick={() => { confirmOrderManually(selectedOrder); setSelectedOrder(null); }}
+                    className="px-4 py-3 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition font-bold"
+                  >
+                    تأكيد يدوي
                   </button>
                   <button
                     onClick={() => { cancelOrder(selectedOrder); setSelectedOrder(null); }}

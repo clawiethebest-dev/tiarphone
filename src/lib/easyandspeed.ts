@@ -85,12 +85,20 @@ export interface ParcelInput {
 export async function getWilayas(): Promise<Wilaya[]> {
   try {
     const res = await fetch(`${API_BASE}/wilayas`, { headers });
-    if (!res.ok) throw new Error('Failed to fetch wilayas');
-    return res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.data)) return data.data;
+    }
   } catch (error) {
     console.error('EasyAndSpeed API error:', error);
-    return [];
   }
+  return ((FALLBACK_COMMUNES as any).wilayas || []).map((w: any) => ({
+    id: w.id,
+    name: w.name,
+    zone: 2,
+    is_deliverable: w.is_deliverable !== false ? 1 : 0
+  }));
 }
 
 export async function getCommunes(wilayaId?: number): Promise<Commune[]> {
@@ -114,14 +122,14 @@ export async function getDeliveryFees(): Promise<DeliveryFee[]> {
 
 // Alias for backward compatibility
 export async function getAllDeliveryFees(): Promise<DeliveryFee[]> {
-  try {
-    const res = await fetch(`${API_BASE}/deliveryfees`, { headers });
-    if (!res.ok) throw new Error('Failed to fetch delivery fees');
-    return res.json();
-  } catch (error) {
-    console.error('EasyAndSpeed API error:', error);
-    return [];
-  }
+  const fallbackWilayas = (FALLBACK_COMMUNES as any).wilayas || [];
+  return fallbackWilayas.map((w: any) => ({
+    wilaya_id: w.id,
+    wilaya_name: w.name,
+    home_fee: w.home_fee || 700,
+    desk_fee: w.desk_fee || 400,
+    is_deliverable: w.is_deliverable !== false,
+  }));
 }
 
 export async function calculateDeliveryFee(wilayaId: number, toHome: boolean = true): Promise<number> {
@@ -133,45 +141,60 @@ export async function calculateDeliveryFee(wilayaId: number, toHome: boolean = t
 
 export async function createParcel(parcel: ParcelInput): Promise<any> {
   try {
-    // Validate commune_id before sending to EasyAndSpeed
-    // Get communes for this wilaya to verify the commune_id is valid
     const communes = await getCommunes(parcel.to_wilaya_id);
-    const validCommune = communes.find(c => c.id === parcel.to_commune_id);
-    
-    let finalParcel = { ...parcel };
-    
+    let validCommune = communes.find(c => c.id === parcel.to_commune_id);
     if (!validCommune) {
-      // Commune ID not found - try to find a valid commune for this wilaya
-      console.warn(`Invalid commune_id ${parcel.to_commune_id} for wilaya ${parcel.to_wilaya_id}. Looking for alternative...`);
-      
-      // Find the first deliverable commune for this wilaya
-      const deliverableCommune = communes.find(c => 
-        c.wilaya_id === parcel.to_wilaya_id && c.is_deliverable === 1
-      );
-      
-      if (deliverableCommune) {
-        console.log(`Using alternative commune: ${deliverableCommune.name} (ID: ${deliverableCommune.id})`);
-        finalParcel.to_commune_id = deliverableCommune.id;
-      } else {
-        throw new Error(`No valid commune found for wilaya ${parcel.to_wilaya_id}. Please check the commune selection.`);
-      }
+      validCommune = communes.find(c => c.is_deliverable === 1) || communes[0];
     }
-    
+
+    const wilayas = await getWilayas();
+    const validWilaya = wilayas.find(w => w.id === parcel.to_wilaya_id);
+
+    const communeName = validCommune?.name || 'Oran';
+    const wilayaName = validWilaya?.name || validCommune?.wilaya_name || 'Oran';
+
+    const payload = [{
+      order_id: parcel.order_id,
+      firstname: parcel.firstname,
+      familyname: parcel.familyname || parcel.firstname,
+      contact_phone: parcel.contact_phone,
+      address: parcel.address,
+      to_commune_name: communeName,
+      to_wilaya_name: wilayaName,
+      is_stopdesk: parcel.stopdesk_id ? true : false,
+      has_exchange: !!parcel.has_exchange,
+      product_list: parcel.product_list || 'هواتف وإكسسوارات',
+      price: parcel.price,
+      freeshipping: !!parcel.freeshipping,
+      declared_value: parcel.declared_value || parcel.price,
+      do_insurance: false,
+    }];
+
     const res = await fetch(`${API_BASE}/parcels`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(finalParcel),
+      body: JSON.stringify(payload),
     });
-    
+
+    const resData = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      const errorMsg = errorData.message || errorData.error || `HTTP ${res.status}`;
+      const errorMsg = resData.message || resData.error?.message || resData.error || `HTTP ${res.status}`;
       throw new Error(errorMsg);
     }
-    
-    return res.json();
+
+    // EasyAndSpeed returns { [order_id]: { success: true, tracking: "...", ... } }
+    const orderResult = resData[parcel.order_id] || (Object.values(resData)[0] as any);
+    if (orderResult) {
+      if (orderResult.success === false) {
+        throw new Error(orderResult.message || 'فشل في إنشاء الطرد في EasyAndSpeed');
+      }
+      return orderResult;
+    }
+
+    return resData;
   } catch (error) {
-    console.error('EasyAndSpeed API error:', error);
+    console.error('EasyAndSpeed createParcel error:', error);
     throw error;
   }
 }

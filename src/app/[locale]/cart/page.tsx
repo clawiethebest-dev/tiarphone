@@ -22,7 +22,10 @@ interface CartItem {
 
 interface Wilaya {
   id: number;
+  code?: string;
   name: string;
+  name_ar?: string;
+  display_name?: string;
   home_fee: number;
   desk_fee: number;
   is_deliverable: boolean;
@@ -475,7 +478,7 @@ export default function CartPage({ params }: PageProps) {
                         <option value={0}>{t.selectWilaya}</option>
                         {wilayas.filter(w => w.is_deliverable).map(wilaya => (
                           <option key={wilaya.id} value={wilaya.id}>
-                            {wilaya.id.toString().padStart(2, '0')} - {wilaya.name}
+                            {wilaya.display_name || (wilaya.name_ar ? `${wilaya.id.toString().padStart(2, '0')} - ${wilaya.name_ar} (${wilaya.name})` : `${wilaya.id.toString().padStart(2, '0')} - ${wilaya.name}`)}
                           </option>
                         ))}
                       </select>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { resolveWilayaFromGeo } from '@/data/wilayas';
 
 export async function POST(request: Request) {
   try {
@@ -9,14 +10,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, saved: 0 });
     }
 
-    // Add server timestamp and IP
-    const enrichedLogs = logs.map((log: Record<string, unknown>) => ({
-      ...log,
-      server_timestamp: new Date().toISOString(),
-      ip: request.headers.get('x-forwarded-for') || 
-          request.headers.get('x-real-ip') || 
-          'unknown',
-    }));
+    // Extract real client IP and Geo information from edge headers
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+               request.headers.get('x-real-ip') || 
+               'unknown';
+    const city = decodeURIComponent(request.headers.get('x-vercel-ip-city') || '');
+    const region = request.headers.get('x-vercel-ip-country-region') || '';
+    const country = request.headers.get('x-vercel-ip-country') || 'DZ';
+    const latitude = request.headers.get('x-vercel-ip-latitude') || '';
+    const longitude = request.headers.get('x-vercel-ip-longitude') || '';
+
+    const detectedWilaya = resolveWilayaFromGeo(city, region);
+    const wilayaDisplay = detectedWilaya 
+      ? `${detectedWilaya.code} - ${detectedWilaya.name_ar} (${detectedWilaya.name_fr})`
+      : '';
+
+    // Add server timestamp, IP and Geolocation data
+    const enrichedLogs = logs.map((log: Record<string, unknown>) => {
+      const existingData = (log.data as Record<string, unknown>) || {};
+      return {
+        ...log,
+        server_timestamp: new Date().toISOString(),
+        ip: ip,
+        data: {
+          ...existingData,
+          ip: ip,
+          city: city || existingData.city,
+          region: region || existingData.region,
+          country: country || existingData.country,
+          latitude: latitude || existingData.latitude,
+          longitude: longitude || existingData.longitude,
+          detected_wilaya: wilayaDisplay || existingData.detected_wilaya,
+          detected_wilaya_id: detectedWilaya?.id || existingData.detected_wilaya_id,
+        },
+      };
+    });
 
     // Save to Supabase
     if (isSupabaseConfigured() && supabase) {
@@ -43,7 +71,6 @@ export async function POST(request: Request) {
 
       if (error) {
         console.error('Raw logs insert error:', error);
-        // Don't fail the request, just log
       }
     }
 

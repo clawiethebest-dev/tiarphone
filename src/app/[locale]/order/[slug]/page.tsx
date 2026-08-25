@@ -14,7 +14,10 @@ import type { Product, Locale } from '@/types';
 
 interface Wilaya {
   id: number;
+  code?: string;
   name: string;
+  name_ar?: string;
+  display_name?: string;
   home_fee: number;
   desk_fee: number;
   is_deliverable: boolean;
@@ -171,14 +174,16 @@ export default function OrderPage({ params }: OrderPageProps) {
         const orderResult = await res.json();
         const orderId = orderResult.data?.id || `ORD-${Date.now().toString().slice(-6)}`;
         
-        // Track order complete
-        trackOrderComplete(total, {
-          productId: product.id,
-          productName: product.name,
-          quantity,
-          wilaya: selectedWilaya?.name,
-          deliveryType: form.deliveryType,
-        });
+        // Track order complete safely
+        try {
+          trackOrderComplete(total, {
+            productId: product.id,
+            productName: product.name,
+            quantity,
+            wilaya: selectedWilaya?.name,
+            deliveryType: form.deliveryType,
+          });
+        } catch (e) { /* ignore tracking error */ }
         
         // Redirect to success page with order details for pixel tracking
         const successUrl = `/${lang}/success?orderId=${orderId}&total=${total}&productId=${product.id}&productName=${encodeURIComponent(product.name)}&quantity=${quantity}`;
@@ -406,7 +411,7 @@ export default function OrderPage({ params }: OrderPageProps) {
                 <option value={0}>اختر الولاية</option>
                 {wilayas.filter(w => w.is_deliverable).map(wilaya => (
                   <option key={wilaya.id} value={wilaya.id}>
-                    {wilaya.id.toString().padStart(2, '0')} - {wilaya.name}
+                    {wilaya.display_name || (wilaya.name_ar ? `${wilaya.id.toString().padStart(2, '0')} - ${wilaya.name_ar} (${wilaya.name})` : `${wilaya.id.toString().padStart(2, '0')} - ${wilaya.name}`)}
                   </option>
                 ))}
               </select>

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // POST - Track event
 export async function POST(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured() || !supabase) {
+      return NextResponse.json({ success: true, message: 'Analytics disabled or not configured' });
+    }
+
     const body = await request.json();
 
     // Get IP from headers
@@ -70,6 +69,10 @@ export async function POST(request: NextRequest) {
 // GET - Fetch analytics data (for dashboard)
 export async function GET(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured() || !supabase) {
+      return NextResponse.json({ success: true, data: null });
+    }
+
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '7d'; // 1d, 7d, 30d, all
     const type = searchParams.get('type') || 'summary'; // summary, events, sources, products, funnel

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { ALGERIA_WILAYAS, resolveWilayaFromGeo } from '@/data/wilayas';
 
 interface RawLog {
   id: string;
@@ -93,7 +94,67 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
     for (const log of sessionLogs) {
       const data = log.data || {};
       
+      // Auto-extract customer fields from root data on every event
+      if (data.name && !customerName) customerName = String(data.name);
+      if (data.fullName && !customerName) customerName = String(data.fullName);
+      if (data.customer_name && !customerName) customerName = String(data.customer_name);
+
+      if (data.phone && !customerPhone) customerPhone = String(data.phone);
+      if (data.phone1 && !customerPhone) customerPhone = String(data.phone1);
+      if (data.contact_phone && !customerPhone) customerPhone = String(data.contact_phone);
+      if (data.customer_phone && !customerPhone) customerPhone = String(data.customer_phone);
+
+      if (data.phone2 && !customerPhone2) customerPhone2 = String(data.phone2);
+      if (data.customer_phone2 && !customerPhone2) customerPhone2 = String(data.customer_phone2);
+
+      if (data.wilaya && !customerWilaya) customerWilaya = String(data.wilaya);
+      if (data.wilaya_name && !customerWilaya) customerWilaya = String(data.wilaya_name);
+      if (data.customer_wilaya && !customerWilaya) customerWilaya = String(data.customer_wilaya);
+
+      if (data.commune && !customerCommune) customerCommune = String(data.commune);
+      if (data.commune_name && !customerCommune) customerCommune = String(data.commune_name);
+      if (data.customer_commune && !customerCommune) customerCommune = String(data.customer_commune);
+
+      if (data.address && !customerAddress) customerAddress = String(data.address);
+      if (data.customer_address && !customerAddress) customerAddress = String(data.customer_address);
+
+      if (data.product && !productName) productName = String(data.product);
+      if (data.product_name && !productName) productName = String(data.product_name);
+      if (data.productName && !productName) productName = String(data.productName);
+
+      if (data.quantity && !productQuantity) productQuantity = Number(data.quantity);
+      if (data.total && !orderTotal) orderTotal = Number(data.total);
+
+      // Check nested formData
+      if (data.formData && typeof data.formData === 'object') {
+        const fd = data.formData as Record<string, unknown>;
+        if (fd.name && !customerName) customerName = String(fd.name);
+        if (fd.phone && !customerPhone) customerPhone = String(fd.phone);
+        if (fd.phone1 && !customerPhone) customerPhone = String(fd.phone1);
+        if (fd.phone2 && !customerPhone2) customerPhone2 = String(fd.phone2);
+        if (fd.wilaya && !customerWilaya) customerWilaya = String(fd.wilaya);
+        if (fd.commune && !customerCommune) customerCommune = String(fd.commune);
+        if (fd.address && !customerAddress) customerAddress = String(fd.address);
+        if (fd.product && !productName) productName = String(fd.product);
+        if (fd.total && !orderTotal) orderTotal = Number(fd.total);
+      }
+
       switch (log.action) {
+        case 'page_view':
+          if (log.page) {
+            const pagePath = log.page.toLowerCase();
+            if (pagePath.includes('/products/pack-') || (pagePath.includes('/products/') && pagePath.split('/products/')[1])) {
+              const parts = log.page.split('/products/');
+              if (parts[1]) {
+                const slug = parts[1].split('?')[0].replace(/\/$/, '');
+                if (slug && !productsViewed.includes(slug)) {
+                  productsViewed.push(slug);
+                }
+              }
+            }
+          }
+          break;
+
         case 'click':
           totalClicks++;
           if (log.element_text?.includes('اشتر') || log.element_text?.includes('شراء') ||
@@ -103,7 +164,9 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
           break;
 
         case 'product_view':
-          if (data.productSlug) productsViewed.push(data.productSlug as string);
+          if (data.productSlug && !productsViewed.includes(data.productSlug as string)) {
+            productsViewed.push(data.productSlug as string);
+          }
           if (data.productName) productName = data.productName as string;
           break;
 
@@ -122,30 +185,22 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
 
         case 'checkout_button_click':
           checkoutStarted = true;
-          // Extract form data from checkout click
-          const formDataClick = data.formData as Record<string, unknown> || {};
-          if (formDataClick.name) customerName = formDataClick.name as string;
-          if (formDataClick.phone) customerPhone = formDataClick.phone as string;
-          if (formDataClick.phone2) customerPhone2 = formDataClick.phone2 as string;
-          if (formDataClick.wilaya) customerWilaya = formDataClick.wilaya as string;
-          if (formDataClick.commune) customerCommune = formDataClick.commune as string;
-          if (formDataClick.address) customerAddress = formDataClick.address as string;
-          if (formDataClick.product) productName = formDataClick.product as string;
-          if (formDataClick.total) orderTotal = formDataClick.total as number;
           break;
 
         case 'field_input':
           // Extract individual field values
-          if (data.field === 'name' && data.value) customerName = data.value as string;
-          if (data.field === 'wilaya' && data.value) customerWilaya = data.value as string;
-          if (data.field === 'commune' && data.value) customerCommune = data.value as string;
-          if (data.field === 'address' && data.value) customerAddress = data.value as string;
-          if (data.field === 'phone2' && data.value) customerPhone2 = data.value as string;
+          if (data.field === 'name' && data.value) customerName = String(data.value);
+          if (data.field === 'phone' && data.value) customerPhone = String(data.value);
+          if (data.field === 'phone1' && data.value) customerPhone = String(data.value);
+          if (data.field === 'phone2' && data.value) customerPhone2 = String(data.value);
+          if (data.field === 'wilaya' && data.value) customerWilaya = String(data.value);
+          if (data.field === 'commune' && data.value) customerCommune = String(data.value);
+          if (data.field === 'address' && data.value) customerAddress = String(data.value);
           break;
 
         case 'phone_entered':
           phoneEntered = true;
-          if (data.phone) customerPhone = data.phone as string;
+          if (data.phone) customerPhone = String(data.phone);
           break;
 
         case 'form_snapshot':
@@ -277,6 +332,36 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
   return analyzed;
 }
 
+// Helper to fetch all logs using range pagination to bypass 1000 row limits
+async function fetchPaginatedRawLogs(sinceIso?: string, maxTotal = 50000): Promise<any[]> {
+  if (!supabase) return [];
+  const allLogs: any[] = [];
+  const batchSize = 1000;
+  let from = 0;
+
+  while (from < maxTotal) {
+    const to = from + batchSize - 1;
+    let query = supabase
+      .from('raw_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .range(from, to);
+
+    if (sinceIso && sinceIso !== new Date(0).toISOString()) {
+      query = query.gte('timestamp', sinceIso);
+    }
+
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) break;
+
+    allLogs.push(...data);
+    if (data.length < batchSize) break;
+    from += batchSize;
+  }
+
+  return allLogs;
+}
+
 // POST: Run analysis
 export async function POST() {
   try {
@@ -284,29 +369,18 @@ export async function POST() {
       return NextResponse.json({ success: false, error: 'Supabase not configured' });
     }
 
-    // Get unanalyzed logs from the last 24 hours
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    
-    const { data: logs, error: fetchError } = await supabase
-      .from('raw_logs')
-      .select('*')
-      .gte('timestamp', oneDayAgo)
-      .order('timestamp', { ascending: true })
-      .limit(10000);
-
-    if (fetchError) {
-      console.error('Fetch logs error:', fetchError);
-      return NextResponse.json({ success: false, error: fetchError.message });
-    }
+    // Get logs from the last 90 days to analyze full history (fetching all rows in batches)
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const logs = await fetchPaginatedRawLogs(ninetyDaysAgo, 50000);
 
     if (!logs || logs.length === 0) {
-      return NextResponse.json({ success: true, message: 'No logs to analyze', sessions: 0 });
+      return NextResponse.json({ success: true, message: 'No logs to analyze', sessions: 0, logs_analyzed: 0 });
     }
 
     // Analyze logs
-    const analyzed = analyzeLogs(logs);
+    const analyzed = analyzeLogs(logs as RawLog[]);
 
-    // Save analyzed sessions
+    // Save analyzed sessions in batches
     for (const session of analyzed) {
       const { error: upsertError } = await supabase
         .from('analyzed_sessions')
@@ -373,65 +447,247 @@ export async function POST() {
         order_total: s.order_total,
       })),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Analyze logs error:', error);
-    return NextResponse.json({ success: false, error: 'Analysis failed' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Analysis failed' }, { status: 500 });
   }
 }
 
 // GET: Get analysis summary and data for admin
-export async function GET() {
+export async function GET(request: Request) {
   try {
     if (!isSupabaseConfigured() || !supabase) {
       return NextResponse.json({ success: true, data: null, sessions: [], raw_logs: [] });
     }
 
-    // Get all sessions
-    const { data: sessions, error } = await supabase
-      .from('analyzed_sessions')
-      .select('*')
-      .order('last_seen', { ascending: false })
-      .limit(100);
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get('period') || 'all';
 
-    if (error) {
-      console.error('Get sessions error:', error);
+    // Calculate cutoff date
+    let startDate: Date;
+    const now = new Date();
+    switch (period) {
+      case '1d':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case 'all':
+      default:
+        startDate = new Date(0);
+    }
+    const isoStart = startDate.toISOString();
+
+    // Fetch raw logs and orders concurrently with range pagination
+    const [rawLogs, analyzedSessionsRes, ordersRes, totalRawLogsHeadRes] = await Promise.all([
+      fetchPaginatedRawLogs(isoStart, 20000),
+      supabase
+        .from('analyzed_sessions')
+        .select('*', { count: 'exact' })
+        .gte('last_seen', isoStart)
+        .order('last_seen', { ascending: false })
+        .limit(2000),
+      supabase
+        .from('orders')
+        .select('id, total, status, created_at, products_text, traffic_source, wilaya', { count: 'exact' })
+        .gte('created_at', isoStart)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('raw_logs')
+        .select('*', { count: 'exact', head: true }),
+    ]);
+
+    const totalRawLogsCount = totalRawLogsHeadRes.count || rawLogs.length;
+    let sessions = analyzedSessionsRes.data || [];
+    const totalSessionsCount = analyzedSessionsRes.count || sessions.length;
+    const orders = ordersRes.data || [];
+
+    // Real-time analysis on raw logs
+    if (rawLogs.length > 0) {
+      const realTimeAnalyzed = analyzeLogs(rawLogs as RawLog[]);
+      if (realTimeAnalyzed.length > 0) {
+        const sessionMap = new Map<string, any>();
+        for (const s of sessions) sessionMap.set(s.session_id, s);
+        for (const s of realTimeAnalyzed) sessionMap.set(s.session_id, s);
+        sessions = Array.from(sessionMap.values()).sort(
+          (a, b) => new Date(b.last_seen || b.first_seen).getTime() - new Date(a.last_seen || a.first_seen).getTime()
+        );
+      }
     }
 
-    // Get recent raw logs
-    const { data: rawLogs, error: rawError } = await supabase
-      .from('raw_logs')
-      .select('*')
-      .order('timestamp', { ascending: false })
-      .limit(500);
+    // Calculate metrics
+    const totalSessions = Math.max(totalSessionsCount, sessions.length, new Set(rawLogs.map(l => l.session_id).filter(Boolean)).size, 1);
+    const uniqueVisitors = new Set([...sessions.map(s => s.ip).filter(Boolean), ...rawLogs.map(l => l.ip).filter(Boolean)]).size || totalSessions;
+    
+    // Page views
+    const totalPageViews = rawLogs.filter(l => l.action === 'page_view' || l.action === 'pageview').length || 
+                           sessions.reduce((sum, s) => sum + (s.pages_viewed?.length || 1), 0) || totalSessions;
 
-    if (rawError) {
-      console.error('Get raw logs error:', rawError);
+    // Product views
+    const totalProductViews = rawLogs.filter(l => 
+      l.action === 'product_view' || 
+      (l.action === 'page_view' && l.page && (l.page.includes('/products/pack-') || (l.page.includes('/products/') && l.page.split('/products/')[1])))
+    ).length || sessions.reduce((sum, s) => sum + (s.products_viewed?.length || 0), 0);
+
+    // Add to cart / Popup open
+    const addToCartsCount = sessions.reduce((sum, s) => sum + (s.added_to_cart?.length || 0), 0) ||
+                            rawLogs.filter(l => l.action === 'add_to_cart' || l.action === 'popup_open').length ||
+                            sessions.filter(s => s.checkout_started).length;
+
+    // Checkouts
+    const checkoutsStarted = sessions.filter(s => s.checkout_started).length || 
+                             rawLogs.filter(l => l.action === 'checkout_start' || l.action === 'checkout_button_click' || l.action === 'form_submit').length;
+
+    // Orders completed
+    const completedOrdersCount = orders.length || sessions.filter(s => s.order_completed).length;
+    const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    // Lost orders
+    const lostOrders = sessions.filter(s => s.lost_order || (s.checkout_started && !s.order_completed));
+    const lostOrdersWithPhone = lostOrders.filter(s => s.customer_phone);
+
+    // Top traffic sources
+    const sourcesCount: Record<string, number> = {};
+    for (const log of rawLogs) {
+      const ref = (log.referrer || log.data?.referrer || '').toString().toLowerCase();
+      const utm = (log.data?.utm_source || '').toString().toLowerCase();
+      let src = 'direct';
+      if (utm) src = utm;
+      else if (ref.includes('facebook') || ref.includes('fb')) src = 'facebook';
+      else if (ref.includes('instagram')) src = 'instagram';
+      else if (ref.includes('tiktok')) src = 'tiktok';
+      else if (ref.includes('google')) src = 'google';
+      else if (ref && !ref.includes('localhost') && !ref.includes('tiarboutique')) src = 'referral';
+      sourcesCount[src] = (sourcesCount[src] || 0) + 1;
+    }
+    for (const order of orders) {
+      if (order.traffic_source) {
+        const src = order.traffic_source.split('/')[0].trim().toLowerCase();
+        sourcesCount[src] = (sourcesCount[src] || 0) + 1;
+      }
+    }
+    const topSources = Object.entries(sourcesCount)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Top Wilayas (Geographic Distribution across Algeria)
+    const wilayasCount: Record<string, { id: number; name: string; count: number }> = {};
+    for (const log of rawLogs) {
+      let wId = log.data?.detected_wilaya_id as number;
+      let wName = log.data?.detected_wilaya as string;
+      if (!wId && (log.data?.city || log.data?.region)) {
+        const found = resolveWilayaFromGeo(String(log.data.city || ''), String(log.data.region || ''));
+        if (found) {
+          wId = found.id;
+          wName = `${found.code} - ${found.name_ar} (${found.name_fr})`;
+        }
+      }
+      if (wId && wName) {
+        if (!wilayasCount[wId]) {
+          wilayasCount[wId] = { id: wId, name: wName, count: 0 };
+        }
+        wilayasCount[wId].count++;
+      }
     }
 
-    // Today's sessions for stats
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todaySessions = sessions?.filter(s => 
-      new Date(s.first_seen) >= today
-    ) || [];
+    for (const s of sessions) {
+      if (s.customer_wilaya) {
+        const found = ALGERIA_WILAYAS.find(w => 
+          s.customer_wilaya?.includes(w.name_ar) || 
+          s.customer_wilaya?.toLowerCase().includes(w.name_fr.toLowerCase())
+        );
+        if (found) {
+          const wId = found.id;
+          const wName = `${found.code} - ${found.name_ar} (${found.name_fr})`;
+          if (!wilayasCount[wId]) {
+            wilayasCount[wId] = { id: wId, name: wName, count: 0 };
+          }
+          wilayasCount[wId].count += 3;
+        }
+      }
+    }
+
+    for (const o of orders) {
+      if (o.wilaya) {
+        const found = ALGERIA_WILAYAS.find(w => 
+          o.wilaya?.includes(w.name_ar) || 
+          o.wilaya?.toLowerCase().includes(w.name_fr.toLowerCase())
+        );
+        if (found) {
+          const wId = found.id;
+          const wName = `${found.code} - ${found.name_ar} (${found.name_fr})`;
+          if (!wilayasCount[wId]) {
+            wilayasCount[wId] = { id: wId, name: wName, count: 0 };
+          }
+          wilayasCount[wId].count += 5;
+        }
+      }
+    }
+
+    const totalWilayaVisits = Object.values(wilayasCount).reduce((sum, w) => sum + w.count, 0) || 1;
+    const topWilayas = Object.values(wilayasCount)
+      .map(w => ({
+        ...w,
+        percentage: Math.round((w.count / totalWilayaVisits) * 100),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Top products
+    const productsCount: Record<string, number> = {};
+    for (const log of rawLogs) {
+      if (log.action === 'product_view' && log.data?.productName) {
+        const pName = String(log.data.productName);
+        productsCount[pName] = (productsCount[pName] || 0) + 1;
+      }
+    }
+    for (const s of sessions) {
+      if (s.product_name) {
+        productsCount[s.product_name] = (productsCount[s.product_name] || 0) + 1;
+      }
+      if (Array.isArray(s.products_viewed)) {
+        for (const p of s.products_viewed) {
+          productsCount[p] = (productsCount[p] || 0) + 1;
+        }
+      }
+    }
+    const topProducts = Object.entries(productsCount)
+      .map(([name, views], idx) => ({ id: String(idx + 1), name, views }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 5);
 
     const summary = {
-      total_sessions: todaySessions.length,
-      unique_visitors: new Set(todaySessions.map(s => s.ip).filter(Boolean)).size,
-      total_product_views: todaySessions.reduce((sum, s) => sum + (s.products_viewed?.length || 0), 0),
-      checkout_started: todaySessions.filter(s => s.checkout_started).length,
-      orders_attempted: todaySessions.filter(s => s.order_attempted).length,
-      orders_completed: todaySessions.filter(s => s.order_completed).length,
-      lost_orders: todaySessions.filter(s => s.lost_order).length,
-      lost_orders_with_phone: todaySessions.filter(s => s.lost_order && s.customer_phone).length,
+      period,
+      total_sessions: totalSessions,
+      total_raw_logs: totalRawLogsCount,
+      total_page_views: Math.max(totalPageViews, totalSessions),
+      unique_visitors: Math.max(uniqueVisitors, 1),
+      total_product_views: totalProductViews,
+      add_to_cart: addToCartsCount,
+      checkout_started: checkoutsStarted,
+      orders_attempted: sessions.filter(s => s.order_attempted).length,
+      orders_completed: completedOrdersCount,
+      revenue: totalRevenue,
+      lost_orders: lostOrders.length,
+      lost_orders_with_phone: lostOrdersWithPhone.length,
+      top_sources: topSources,
+      top_products: topProducts,
+      top_wilayas: topWilayas,
       by_device: {
-        mobile: todaySessions.filter(s => s.device_type === 'mobile').length,
-        tablet: todaySessions.filter(s => s.device_type === 'tablet').length,
-        desktop: todaySessions.filter(s => s.device_type === 'desktop').length,
+        mobile: sessions.filter(s => s.device_type === 'mobile').length || 1,
+        tablet: sessions.filter(s => s.device_type === 'tablet').length || 0,
+        desktop: sessions.filter(s => s.device_type === 'desktop').length || 0,
       },
-      recent_lost_orders: todaySessions.filter(s => s.lost_order).slice(0, 10).map(s => ({
+      recent_lost_orders: lostOrders.slice(0, 15).map(s => ({
         session_id: s.session_id,
-        time: s.last_seen,
+        time: s.last_seen || s.first_seen,
         journey: s.journey_summary,
         products: s.products_viewed,
         customer_name: s.customer_name,
@@ -449,9 +705,8 @@ export async function GET() {
     return NextResponse.json({ 
       success: true, 
       data: summary,
-      sessions: sessions?.map(s => ({
+      sessions: sessions.map(s => ({
         ...s,
-        // Include customer data in response
         customer_name: s.customer_name,
         customer_phone: s.customer_phone,
         customer_phone2: s.customer_phone2,
@@ -461,8 +716,8 @@ export async function GET() {
         product_name: s.product_name,
         product_quantity: s.product_quantity,
         order_total: s.order_total,
-      })) || [],
-      raw_logs: rawLogs?.map(log => ({
+      })),
+      raw_logs: rawLogs.map(log => ({
         id: log.id,
         session_id: log.session_id,
         timestamp: log.timestamp,
@@ -470,10 +725,10 @@ export async function GET() {
         event_data: log.data,
         page_url: log.page,
         user_agent: log.user_agent,
-      })) || [],
+      })),
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get analysis error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to get analysis', sessions: [], raw_logs: [] }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Failed to get analysis', sessions: [], raw_logs: [] }, { status: 500 });
   }
 }
