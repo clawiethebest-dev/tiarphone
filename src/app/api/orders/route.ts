@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         .from('orders')
         .insert([orderData])
         .select()
-        .single();
+        .maybeSingle();
         
       if (error) {
         console.error('Supabase insert error:', error);
@@ -235,7 +235,7 @@ export async function PATCH(request: Request) {
       .update(updateData)
       .eq('id', orderId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Supabase PATCH error:', error);

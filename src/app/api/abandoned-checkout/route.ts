@@ -46,7 +46,7 @@ export async function POST(request: Request) {
         .select('id')
         .eq('phone', cleanPhone)
         .eq('completed', false)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         // Update existing record

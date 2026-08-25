@@ -71,7 +71,7 @@ export async function createOrder(order: {
       created_at: new Date().toISOString()
     }])
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
   return data;
@@ -100,7 +100,7 @@ export async function validateCoupon(code: string): Promise<Coupon | null> {
     .select()
     .eq('code', code.toUpperCase())
     .eq('active', true)
-    .single();
+    .maybeSingle();
 
   if (error || !data) return null;
   return data as Coupon;

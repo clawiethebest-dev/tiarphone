@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       .from('products')
       .insert([productData])
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Supabase POST product error:', error);
@@ -124,7 +124,7 @@ export async function PATCH(request: Request) {
       .update(dbData)
       .eq('id', productId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Supabase PATCH product error:', error);
