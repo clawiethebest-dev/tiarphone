@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import AnnouncementBar from '@/components/AnnouncementBar';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import LiveSalesNotification from '@/components/LiveSalesNotification';
 import { AnalyticsProvider } from '@/components/AnalyticsProvider';
 import { PixelProvider } from '@/components/PixelProvider';
 import { TrackerProvider } from '@/components/TrackerProvider';
@@ -93,6 +94,7 @@ export default async function LocaleLayout({
               </main>
               <Footer lang={locale as Locale} t={t} />
               <WhatsAppButton />
+              <LiveSalesNotification locale={locale} />
               </PixelProvider>
             </AnalyticsProvider>
           </TrackerProvider>

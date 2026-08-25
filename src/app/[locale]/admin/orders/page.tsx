@@ -565,22 +565,37 @@ function OrdersContent({ params }: PageProps) {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{order.id}</p>
-                        {order.tracking && (
-                          <p className="text-xs text-brand-600">{order.tracking}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-medium text-gray-900">{order.customer_name}</p>
-                        <p className="text-sm text-gray-500">{order.phone}</p>
-                      </div>
-                    </td>
+                {orders.map((order) => {
+                  const cleanPhone = (order.phone || '').replace(/\D/g, '');
+                  const duplicates = orders.filter(o => o.phone && cleanPhone && o.phone.replace(/\D/g, '') === cleanPhone);
+                  const isDuplicate = duplicates.length > 1;
+
+                  return (
+                    <tr key={order.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isDuplicate ? 'bg-amber-50/40' : ''}`}>
+                      <td className="py-3 px-4">
+                        <div>
+                          <p className="font-medium text-gray-900">{order.id}</p>
+                          {order.tracking && (
+                            <p className="text-xs text-brand-600 font-mono font-bold">{order.tracking}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-gray-900">{order.customer_name}</p>
+                            {isDuplicate && (
+                              <span className="bg-red-100 text-red-700 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border border-red-200">
+                                ⚠️ مكرر ({duplicates.length})
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500 font-mono">{order.phone}</p>
+                          {order.phone2 && (
+                            <p className="text-xs text-purple-600 font-mono">2: {order.phone2}</p>
+                          )}
+                        </div>
+                      </td>
                     <td className="py-3 px-4">
                       <div>
                         <p className="text-gray-700">{order.wilaya}</p>
@@ -663,9 +678,10 @@ function OrdersContent({ params }: PageProps) {
                           )}
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

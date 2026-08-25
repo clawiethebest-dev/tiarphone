@@ -9,6 +9,7 @@ import FeaturesBanner from '@/components/FeaturesBanner';
 import DealsSection from '@/components/DealsSection';
 import FeaturedProducts from '@/components/FeaturedProducts';
 import CategoryBanners from '@/components/CategoryBanners';
+import CustomerReviews from '@/components/CustomerReviews';
 import WhyChooseUs from '@/components/WhyChooseUs';
 import { ALL_PRODUCTS } from '@/data/products';
 import type { Locale } from '@/types';
@@ -58,6 +59,9 @@ export default function HomePage() {
 
       {/* Category Banners */}
       <CategoryBanners lang={locale} t={translations} />
+
+      {/* Real Algerian Customer Reviews (Social Proof) */}
+      <CustomerReviews />
 
       {/* Why Choose Us */}
       <WhyChooseUs t={translations} />

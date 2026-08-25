@@ -171,6 +171,12 @@ export default function Header({ lang, t }: HeaderProps) {
             >
               🔥 {t.deals}
             </Link>
+            <Link
+              href={`/${lang}/track`}
+              className="text-brand-600 hover:text-brand-700 font-bold transition flex items-center gap-1"
+            >
+              📦 {lang === 'ar' ? 'تتبع طلبك' : lang === 'fr' ? 'Suivre ma commande' : 'Track Order'}
+            </Link>
           </div>
         </div>
       </nav>
@@ -234,6 +240,13 @@ export default function Header({ lang, t }: HeaderProps) {
                 onClick={() => setIsMenuOpen(false)}
               >
                 🔥 {t.deals}
+              </Link>
+              <Link
+                href={`/${lang}/track`}
+                className="px-4 py-2 text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg font-bold flex items-center gap-1.5"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                📦 {lang === 'ar' ? 'تتبع طلبك' : lang === 'fr' ? 'Suivre ma commande' : 'Track Order'}
               </Link>
             </nav>
           </div>
