@@ -75,6 +75,32 @@ function LogsContent() {
     } catch (e) { /* ignore */ }
   };
 
+  const deleteLostSession = async (sessionId: string, phone?: string) => {
+    if (!confirm(`هل أنت متأكد من حذف هذا السجل / الرقم (${phone || sessionId}) نهائياً من قاعدة البيانات؟`)) return;
+
+    try {
+      setSessions(prev => prev.filter(s => s.session_id !== sessionId));
+      
+      const res = await fetch('/api/analyze-logs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, phone }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert('حدث خطأ أثناء الحذف: ' + data.error);
+        fetchData();
+      }
+    } catch (e: any) {
+      console.error('Delete error:', e);
+      alert('خطأ في الاتصال');
+      fetchData();
+    }
+  };
+
   const getWhatsAppMessage = (session: AnalyzedSession, type: string = 'help') => {
     const name = session.customer_name ? ` ${session.customer_name}` : '';
     const product = session.product_name || 'المنتجات';
@@ -422,6 +448,14 @@ function LogsContent() {
                             <option value="no_answer">❌ لم يرد / غير مهتم</option>
                           </select>
                         </div>
+
+                        <button
+                          onClick={() => deleteLostSession(session.session_id, session.customer_phone)}
+                          className="w-full text-center text-xs text-red-600 hover:text-red-800 hover:bg-red-50 py-1.5 rounded-lg border border-red-200 font-medium transition"
+                          title="حذف هذا الرقم / السجل نهائياً"
+                        >
+                          🗑️ حذف هذا الرقم
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -616,6 +650,15 @@ function LogsContent() {
                           </div>
                         </div>
                       )}
+
+                      <div className="pt-3 border-t border-gray-200 flex justify-end">
+                        <button
+                          onClick={() => deleteLostSession(session.session_id, session.customer_phone)}
+                          className="text-xs text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 font-medium transition"
+                        >
+                          🗑️ حذف هذه الجلسة وسجلاتها نهائياً
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

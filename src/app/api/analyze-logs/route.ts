@@ -277,8 +277,27 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
       deviceType = 'tablet';
     }
 
+    // Deep scan for Algerian phone numbers across all events in session if not set
+    if (!customerPhone) {
+      for (const log of sessionLogs) {
+        const str = JSON.stringify(log.data || {});
+        const matches = str.match(/0[567]\d{8}/g);
+        if (matches && matches.length > 0) {
+          customerPhone = matches[0];
+          if (matches.length > 1 && !customerPhone2) {
+            customerPhone2 = matches[1];
+          }
+          break;
+        }
+      }
+    }
+
+    if (customerPhone && !orderCompleted) {
+      phoneEntered = true;
+    }
+
     // Detect lost order: started checkout/entered phone but no completion
-    const lostOrder = (checkoutStarted || phoneEntered || orderAttempted) && !orderCompleted;
+    const lostOrder = (checkoutStarted || phoneEntered || orderAttempted || !!customerPhone) && !orderCompleted;
 
     // Generate journey summary
     const journeyParts: string[] = [];
@@ -685,7 +704,7 @@ export async function GET(request: Request) {
         tablet: sessions.filter(s => s.device_type === 'tablet').length || 0,
         desktop: sessions.filter(s => s.device_type === 'desktop').length || 0,
       },
-      recent_lost_orders: lostOrders.slice(0, 15).map(s => ({
+      recent_lost_orders: lostOrders.slice(0, 100).map(s => ({
         session_id: s.session_id,
         time: s.last_seen || s.first_seen,
         journey: s.journey_summary,
@@ -730,5 +749,33 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('Get analysis error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Failed to get analysis', sessions: [], raw_logs: [] }, { status: 500 });
+  }
+}
+
+// DELETE: Delete a lost order/session from logs and abandoned checkouts
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { sessionId, phone } = body;
+
+    if (!sessionId && !phone) {
+      return NextResponse.json({ success: false, error: 'Missing sessionId or phone' }, { status: 400 });
+    }
+
+    if (isSupabaseConfigured() && supabase) {
+      if (sessionId) {
+        await supabase.from('analyzed_sessions').delete().eq('session_id', sessionId);
+        await supabase.from('raw_logs').delete().eq('session_id', sessionId);
+      }
+      if (phone) {
+        const cleanPhone = phone.replace(/\D/g, '');
+        await supabase.from('abandoned_checkouts').delete().eq('phone', cleanPhone);
+      }
+    }
+
+    return NextResponse.json({ success: true, message: 'Deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete log/session error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

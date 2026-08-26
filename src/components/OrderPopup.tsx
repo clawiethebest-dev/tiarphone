@@ -155,6 +155,32 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [phoneSaved, setPhoneSaved] = useState(false);
 
+  // Realtime full form sync for abandoned recovery
+  const syncAbandonedRecovery = async (customData = formData) => {
+    const cleanPhone = (customData.phone1 || '').replace(/\D/g, '');
+    if (cleanPhone.length >= 9) {
+      try {
+        const commObj = filteredCommunes.find(c => c.id === parseInt(customData.commune_id));
+        await fetch('/api/abandoned-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            phone2: customData.phone2 || null,
+            name: customData.name || null,
+            product_id: product.id,
+            product_name: product.name,
+            product_price: product.price,
+            wilaya_name: selectedWilaya?.name || null,
+            commune_name: commObj?.name || null,
+            address: customData.address || null,
+            lang,
+          }),
+        });
+      } catch (e) { /* ignore */ }
+    }
+  };
+
   // Load wilayas on popup open
   useEffect(() => {
     const loadWilayas = async () => {
@@ -449,10 +475,17 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                     </label>
                     <input
                       type="text"
+                      name="name"
                       required
+                      placeholder="الاسم واللقب"
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) => {
+                        const updated = { ...formData, name: e.target.value };
+                        setFormData(updated);
+                        tracker.log('field_input', { field: 'name', value: e.target.value });
+                      }}
+                      onBlur={() => syncAbandonedRecovery()}
                     />
                   </div>
 
@@ -463,33 +496,20 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                     </label>
                     <input
                       type="tel"
+                      name="phone1"
                       required
-                      placeholder="05xxxxxxxx"
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                      placeholder="05xxxxxxxx / 06xxxxxxxx / 07xxxxxxxx"
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono"
                       value={formData.phone1}
-                      onChange={(e) => setFormData({ ...formData, phone1: e.target.value })}
-                      onBlur={async (e) => {
-                        // Save phone for abandoned checkout recovery
-                        const phone = e.target.value.replace(/\D/g, '');
-                        if (phone.length >= 9 && !phoneSaved) {
-                          setPhoneSaved(true);
-                          try {
-                            await fetch('/api/abandoned-checkout', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                phone,
-                                name: formData.name,
-                                product_id: product.id,
-                                product_name: product.name,
-                                product_price: product.price,
-                                wilaya_name: selectedWilaya?.name,
-                                lang,
-                              }),
-                            });
-                          } catch (e) { /* ignore */ }
+                      onChange={(e) => {
+                        const updated = { ...formData, phone1: e.target.value };
+                        setFormData(updated);
+                        tracker.log('field_input', { field: 'phone', value: e.target.value });
+                        if (e.target.value.replace(/\D/g, '').length >= 9) {
+                          tracker.log('phone_entered', { phone: e.target.value });
                         }
                       }}
+                      onBlur={() => syncAbandonedRecovery()}
                     />
                     <p className="text-xs text-gray-500 mt-1">{t.phoneHint}</p>
                   </div>
@@ -510,10 +530,16 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                       </label>
                       <input
                         type="tel"
-                        placeholder="05xxxxxxxx"
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        name="phone2"
+                        placeholder="05xxxxxxxx (رقم إضافي)"
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent font-mono"
                         value={formData.phone2}
-                        onChange={(e) => setFormData({ ...formData, phone2: e.target.value })}
+                        onChange={(e) => {
+                          const updated = { ...formData, phone2: e.target.value };
+                          setFormData(updated);
+                          tracker.log('field_input', { field: 'phone2', value: e.target.value });
+                        }}
+                        onBlur={() => syncAbandonedRecovery()}
                       />
                       <p className="text-xs text-gray-500 mt-1">{t.phone2Hint}</p>
                     </div>
@@ -525,10 +551,17 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                       {t.wilaya} *
                     </label>
                     <select
+                      name="wilaya"
                       required
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                       value={formData.wilaya_id}
-                      onChange={(e) => setFormData({ ...formData, wilaya_id: e.target.value, commune_id: '' })}
+                      onChange={(e) => {
+                        const updated = { ...formData, wilaya_id: e.target.value, commune_id: '' };
+                        setFormData(updated);
+                        const selW = wilayas.find(w => w.id === parseInt(e.target.value));
+                        tracker.log('field_input', { field: 'wilaya', value: selW?.name || e.target.value });
+                        syncAbandonedRecovery(updated);
+                      }}
                     >
                       <option value="">{isLoading ? t.loading : t.selectWilaya}</option>
                       {wilayas.map((wilaya) => (
@@ -545,11 +578,18 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                       {t.commune} *
                     </label>
                     <select
+                      name="commune"
                       required
                       disabled={!formData.wilaya_id}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-100"
                       value={formData.commune_id}
-                      onChange={(e) => setFormData({ ...formData, commune_id: e.target.value })}
+                      onChange={(e) => {
+                        const updated = { ...formData, commune_id: e.target.value };
+                        setFormData(updated);
+                        const selC = filteredCommunes.find(c => c.id === parseInt(e.target.value));
+                        tracker.log('field_input', { field: 'commune', value: selC?.name || e.target.value });
+                        syncAbandonedRecovery(updated);
+                      }}
                     >
                       <option value="">{t.selectCommune}</option>
                       {filteredCommunes.map((commune) => (
@@ -566,11 +606,17 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                       {t.address} *
                     </label>
                     <textarea
+                      name="address"
                       required
                       rows={2}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent resize-none"
                       value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      onChange={(e) => {
+                        const updated = { ...formData, address: e.target.value };
+                        setFormData(updated);
+                        tracker.log('field_input', { field: 'address', value: e.target.value });
+                      }}
+                      onBlur={() => syncAbandonedRecovery()}
                     />
                   </div>
 
