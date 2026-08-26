@@ -54,6 +54,8 @@ function LogsContent() {
   const [analyzing, setAnalyzing] = useState(false);
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [filterSearch, setFilterSearch] = useState('');
+  const [lostSearch, setLostSearch] = useState('');
+  const [lostLimit, setLostLimit] = useState<number>(50);
   const [crmStatuses, setCrmStatuses] = useState<Record<string, string>>({});
   const [selectedTemplate, setSelectedTemplate] = useState<Record<string, string>>({});
 
@@ -215,6 +217,20 @@ function LogsContent() {
   const lostOrders = sessions.filter(s => s.lost_order);
   const lostOrdersWithPhone = lostOrders.filter(s => s.customer_phone);
 
+  const filteredLostOrdersWithPhone = lostOrdersWithPhone.filter(s => {
+    if (!lostSearch) return true;
+    const term = lostSearch.toLowerCase();
+    return (
+      (s.customer_phone && s.customer_phone.includes(term)) ||
+      (s.customer_phone2 && s.customer_phone2.includes(term)) ||
+      (s.customer_name && s.customer_name.toLowerCase().includes(term)) ||
+      (s.product_name && s.product_name.toLowerCase().includes(term)) ||
+      (s.customer_wilaya && s.customer_wilaya.toLowerCase().includes(term)) ||
+      (s.customer_commune && s.customer_commune.toLowerCase().includes(term)) ||
+      (s.customer_address && s.customer_address.toLowerCase().includes(term))
+    );
+  });
+
   const filteredSessions = sessions.filter(s => {
     if (!filterSearch) return true;
     const term = filterSearch.toLowerCase();
@@ -304,15 +320,43 @@ function LogsContent() {
           </div>
         </div>
 
-        {/* Lost Orders Alert */}
+        {/* Lost Orders Alert (The Pink/Red Box) */}
         {lostOrdersWithPhone.length > 0 && (
-          <div className="bg-red-50 border-2 border-red-500 rounded-xl p-5 mb-6 shadow-sm">
-            <h2 className="text-lg font-bold text-red-700 mb-3 flex items-center gap-2">
-              <span>⚠️</span>
-              <span>طلبات ضائعة لم تكتمل (فرص استعادة المبيعات المباشرة)</span>
-            </h2>
+          <div className="bg-red-50 border-2 border-red-500 rounded-2xl p-5 mb-8 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-200 pb-3">
+              <div>
+                <h2 className="text-lg font-extrabold text-red-700 flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>طلبات ضائعة وسلات متروكة ({filteredLostOrdersWithPhone.length} فرصة بيع مؤكدة)</span>
+                </h2>
+                <p className="text-xs text-red-600 mt-0.5">
+                  هؤلاء زبائن أدخلوا معلوماتهم في نموذج الطلب ولم يكتمل شراؤهم — تواصل معهم لاسترجاع مبيعاتك فوراً
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="search"
+                  placeholder="🔍 بحث في أرقام واسماء العملاء..."
+                  value={lostSearch}
+                  onChange={e => setLostSearch(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-white border border-red-300 rounded-lg focus:outline-none focus:border-red-500 w-52 font-medium"
+                />
+                <select
+                  value={lostLimit}
+                  onChange={e => setLostLimit(parseInt(e.target.value))}
+                  className="px-2.5 py-1.5 text-xs bg-white border border-red-300 rounded-lg focus:outline-none"
+                >
+                  <option value={20}>عرض 20</option>
+                  <option value={50}>عرض 50</option>
+                  <option value={100}>عرض 100</option>
+                  <option value={500}>عرض الكل</option>
+                </select>
+              </div>
+            </div>
+
             <div className="space-y-4">
-              {lostOrdersWithPhone.slice(0, 30).map((session) => {
+              {filteredLostOrdersWithPhone.slice(0, lostLimit).map((session) => {
                 const currentTemplate = selectedTemplate[session.session_id] || 'free_shipping';
                 const currentStatus = crmStatuses[session.session_id] || 'pending';
 
@@ -326,100 +370,116 @@ function LogsContent() {
                         ? 'border-blue-300'
                         : currentStatus === 'no_answer'
                         ? 'border-gray-200 opacity-75'
-                        : 'border-red-200'
+                        : 'border-red-200 hover:border-red-300'
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-4">
-                      {/* Customer and Order info */}
-                      <div className="space-y-3 flex-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                          {session.customer_name && (
-                            <span className="font-extrabold text-base text-gray-900 bg-gray-100 px-3 py-1 rounded-xl">
-                              👤 {session.customer_name}
-                            </span>
-                          )}
-                          {session.product_name && (
-                            <span className="font-bold text-gray-800 bg-purple-50 text-purple-700 px-3 py-1 rounded-xl text-sm border border-purple-200">
-                              📦 {session.product_name}
-                            </span>
-                          )}
+                      {/* Comprehensive Customer Details Table */}
+                      <div className="space-y-3 flex-1 min-w-[300px]">
+                        {/* Top Badges */}
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="font-extrabold text-sm text-gray-900 bg-gray-100 px-3 py-1 rounded-xl flex items-center gap-1.5">
+                            <span>👤</span>
+                            <span>{session.customer_name || 'الاسم غير مسجل'}</span>
+                          </span>
+
+                          <span className="font-bold bg-purple-50 text-purple-700 px-3 py-1 rounded-xl border border-purple-200">
+                            📦 {session.product_name || 'المنتجات'}
+                          </span>
+
                           {session.order_total && (
-                            <span className="font-extrabold text-brand-700 bg-brand-50 px-3 py-1 rounded-xl text-sm border border-brand-200">
+                            <span className="font-extrabold text-brand-700 bg-brand-50 px-3 py-1 rounded-xl border border-brand-200">
                               💰 {session.order_total.toLocaleString()} د.ج
                             </span>
                           )}
-                          <span className="text-xs text-gray-400 font-mono">
+
+                          <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full text-xs">
+                            {session.device_type === 'mobile' ? '📱 هاتف' : '💻 كمبيوتر'}
+                          </span>
+
+                          <span className="text-gray-400 font-mono">
                             {formatDate(session.last_seen || session.first_seen)}
                           </span>
                         </div>
 
-                        {/* Phone Numbers with instant WhatsApp & Call */}
-                        <div className="flex flex-wrap items-center gap-4 pt-1">
-                          {session.customer_phone && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 flex items-center gap-3">
-                              <div>
-                                <span className="text-gray-500 text-[11px] block leading-none mb-1">الهاتف الأساسي 1:</span>
-                                <a 
-                                  href={`tel:${session.customer_phone}`}
-                                  className="font-extrabold text-blue-700 text-base hover:underline font-mono"
-                                >
-                                  {session.customer_phone}
-                                </a>
-                              </div>
-                              <a
-                                href={`https://wa.me/${formatPhoneForWhatsApp(session.customer_phone)}?text=${encodeURIComponent(
-                                  getWhatsAppMessage(session, currentTemplate)
-                                )}`}
-                                target="_blank"
-                                className="bg-[#25D366] hover:bg-[#128C7E] text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1"
-                              >
-                                <span>💬 واتساب 1</span>
+                        {/* Customer Form Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs bg-gray-50/80 p-3.5 rounded-xl border border-gray-200">
+                          {/* Phone 1 */}
+                          <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-blue-100 shadow-sm">
+                            <div>
+                              <span className="text-gray-400 text-[10px] block font-medium">الهاتف 1 (الأساسي):</span>
+                              <a href={`tel:${session.customer_phone}`} className="font-extrabold text-sm text-blue-700 hover:underline font-mono">
+                                📱 {session.customer_phone}
                               </a>
                             </div>
-                          )}
+                            <a
+                              href={`https://wa.me/${formatPhoneForWhatsApp(session.customer_phone || '')}?text=${encodeURIComponent(
+                                getWhatsAppMessage(session, currentTemplate)
+                              )}`}
+                              target="_blank"
+                              className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2.5 py-1 rounded-md font-bold text-xs flex items-center gap-1"
+                            >
+                              واتساب 1
+                            </a>
+                          </div>
 
-                          {session.customer_phone2 && (
-                            <div className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 flex items-center gap-3">
-                              <div>
-                                <span className="text-gray-500 text-[11px] block leading-none mb-1">الهاتف الثاني 2 (الاحتياطي):</span>
-                                <a 
-                                  href={`tel:${session.customer_phone2}`}
-                                  className="font-extrabold text-purple-700 text-base hover:underline font-mono"
-                                >
-                                  {session.customer_phone2}
+                          {/* Phone 2 */}
+                          <div className="flex items-center justify-between gap-2 bg-white p-2.5 rounded-lg border border-purple-100 shadow-sm">
+                            <div>
+                              <span className="text-gray-400 text-[10px] block font-medium">الهاتف 2 (الاحتياطي):</span>
+                              {session.customer_phone2 ? (
+                                <a href={`tel:${session.customer_phone2}`} className="font-extrabold text-sm text-purple-700 hover:underline font-mono">
+                                  📞 {session.customer_phone2}
                                 </a>
-                              </div>
+                              ) : (
+                                <span className="text-gray-400 font-mono">لا يوجد رقم ثانٍ</span>
+                              )}
+                            </div>
+                            {session.customer_phone2 && (
                               <a
                                 href={`https://wa.me/${formatPhoneForWhatsApp(session.customer_phone2)}?text=${encodeURIComponent(
                                   getWhatsAppMessage(session, currentTemplate)
                                 )}`}
                                 target="_blank"
-                                className="bg-[#25D366] hover:bg-[#128C7E] text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1"
+                                className="bg-[#25D366] hover:bg-[#128C7E] text-white px-2.5 py-1 rounded-md font-bold text-xs flex items-center gap-1"
                               >
-                                <span>💬 واتساب 2</span>
+                                واتساب 2
                               </a>
-                            </div>
-                          )}
+                            )}
+                          </div>
+
+                          {/* Wilaya & Commune */}
+                          <div className="bg-white p-2.5 rounded-lg border border-gray-100">
+                            <span className="text-gray-400 text-[10px] block font-medium">الولاية والبلدية:</span>
+                            <span className="font-bold text-gray-900">
+                              📍 {[session.customer_wilaya, session.customer_commune].filter(Boolean).join(' - ') || 'غير مدخلة'}
+                            </span>
+                          </div>
+
+                          {/* Detailed Address */}
+                          <div className="bg-white p-2.5 rounded-lg border border-gray-100">
+                            <span className="text-gray-400 text-[10px] block font-medium">العنوان بالتفصيل:</span>
+                            <span className="font-medium text-gray-800">
+                              🏠 {session.customer_address || 'لم يُكتب بعد'}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Full Address details */}
-                        {(session.customer_wilaya || session.customer_commune || session.customer_address) && (
-                          <div className="text-xs text-gray-700 flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                            <span>📍</span>
-                            <span className="font-bold text-gray-900">العنوان:</span>
-                            <span>{[session.customer_wilaya, session.customer_commune, session.customer_address].filter(Boolean).join(' - ')}</span>
-                          </div>
-                        )}
+                        {/* Customer Journey */}
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <span className="font-bold text-gray-600">مسار الزائر:</span>
+                          <span>{session.journey_summary}</span>
+                        </div>
                       </div>
 
-                      {/* CRM Controls and Template Selector (B3, C2) */}
-                      <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 space-y-2.5 min-w-[240px]">
+                      {/* CRM Actions & Controls */}
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3 min-w-[250px] w-full sm:w-auto">
                         <div>
-                          <label className="text-[11px] text-gray-500 font-bold block mb-1">قالب رسالة الواتساب:</label>
+                          <label className="text-[11px] text-gray-600 font-bold block mb-1">اختر قالب رسالة الواتساب:</label>
                           <select
                             value={currentTemplate}
                             onChange={e => setSelectedTemplate({ ...selectedTemplate, [session.session_id]: e.target.value })}
-                            className="w-full text-xs font-medium px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white focus:outline-none focus:border-brand-500"
+                            className="w-full text-xs font-medium px-2.5 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:border-brand-500"
                           >
                             <option value="free_shipping">🎁 عرض توصيل مجاني</option>
                             <option value="discount">💰 تخفيض فوري 500 دج</option>
@@ -428,11 +488,11 @@ function LogsContent() {
                         </div>
 
                         <div>
-                          <label className="text-[11px] text-gray-500 font-bold block mb-1">حالة المتابعة (CRM):</label>
+                          <label className="text-[11px] text-gray-600 font-bold block mb-1">حالة المتابعة (CRM):</label>
                           <select
                             value={currentStatus}
                             onChange={e => updateCrmStatus(session.session_id, e.target.value)}
-                            className={`w-full text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none ${
+                            className={`w-full text-xs font-bold px-2.5 py-2 rounded-lg border focus:outline-none ${
                               currentStatus === 'recovered' 
                                 ? 'bg-green-100 text-green-800 border-green-300' 
                                 : currentStatus === 'contacted'
@@ -451,7 +511,7 @@ function LogsContent() {
 
                         <button
                           onClick={() => deleteLostSession(session.session_id, session.customer_phone)}
-                          className="w-full text-center text-xs text-red-600 hover:text-red-800 hover:bg-red-50 py-1.5 rounded-lg border border-red-200 font-medium transition"
+                          className="w-full text-center text-xs text-red-600 hover:text-red-800 hover:bg-red-50 py-2 rounded-lg border border-red-200 font-bold transition"
                           title="حذف هذا الرقم / السجل نهائياً"
                         >
                           🗑️ حذف هذا الرقم

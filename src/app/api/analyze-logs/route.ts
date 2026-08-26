@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { ALGERIA_WILAYAS, resolveWilayaFromGeo } from '@/data/wilayas';
+import { ALL_PRODUCTS } from '@/data/products';
 
 interface RawLog {
   id: string;
@@ -294,6 +295,47 @@ function analyzeLogs(logs: RawLog[]): AnalyzedSession[] {
 
     if (customerPhone && !orderCompleted) {
       phoneEntered = true;
+    }
+
+    // Infer product name and price if not explicitly captured
+    if (!productName && productsViewed.length > 0) {
+      const pSlug = productsViewed[0];
+      const prod = ALL_PRODUCTS.find(p => p.slug === pSlug);
+      if (prod) {
+        productName = prod.name;
+        if (!orderTotal) orderTotal = prod.price;
+      }
+    }
+
+    if (!productName) {
+      for (const page of pagesViewed) {
+        if (page.includes('/products/')) {
+          const slug = page.split('/products/')[1]?.split('?')[0].replace(/\/$/, '');
+          const prod = ALL_PRODUCTS.find(p => p.slug === slug);
+          if (prod) {
+            productName = prod.name;
+            if (!orderTotal) orderTotal = prod.price;
+            break;
+          }
+        }
+      }
+    }
+
+    // Infer Wilaya from IP/Geo if not manually filled
+    if (!customerWilaya) {
+      for (const log of sessionLogs) {
+        if (log.data?.detected_wilaya) {
+          customerWilaya = String(log.data.detected_wilaya);
+          break;
+        }
+        if (log.data?.city || log.data?.region) {
+          const foundW = resolveWilayaFromGeo(String(log.data.city || ''), String(log.data.region || ''));
+          if (foundW) {
+            customerWilaya = `${foundW.code} - ${foundW.name_ar} (${foundW.name_fr})`;
+            break;
+          }
+        }
+      }
     }
 
     // Detect lost order: started checkout/entered phone but no completion
