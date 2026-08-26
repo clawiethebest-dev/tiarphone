@@ -701,6 +701,50 @@ export async function GET(request: Request) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
+    // Top Buying Wilayas
+    const buyingWilayasCount: Record<string, { name: string; count: number; revenue: number }> = {};
+    for (const o of orders) {
+      const wName = o.wilaya || 'غير محددة';
+      if (!buyingWilayasCount[wName]) buyingWilayasCount[wName] = { name: wName, count: 0, revenue: 0 };
+      buyingWilayasCount[wName].count++;
+      buyingWilayasCount[wName].revenue += Number(o.total) || 0;
+    }
+    const topBuyingWilayas = Object.values(buyingWilayasCount).sort((a, b) => b.count - a.count);
+
+    // Order status breakdown
+    const orderStatusCounts = {
+      new: orders.filter(o => o.status === 'new' || o.status === 'pending').length,
+      shipped: orders.filter(o => o.status === 'shipped').length,
+      delivered: orders.filter(o => o.status === 'delivered').length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+    };
+
+    // Average Order Value
+    const averageOrderValue = completedOrdersCount > 0 ? Math.round(totalRevenue / completedOrdersCount) : 0;
+
+    // Device details (Android / iPhone / Windows / Mac)
+    const deviceDetails = {
+      android: rawLogs.filter(l => (l.user_agent || '').toLowerCase().includes('android')).length,
+      iphone: rawLogs.filter(l => (l.user_agent || '').toLowerCase().includes('iphone') || (l.user_agent || '').toLowerCase().includes('ios')).length,
+      windows: rawLogs.filter(l => (l.user_agent || '').toLowerCase().includes('windows')).length,
+      mac: rawLogs.filter(l => (l.user_agent || '').toLowerCase().includes('macintosh') || (l.user_agent || '').toLowerCase().includes('mac os')).length,
+      other: 0,
+    };
+
+    // Peak Activity Hours (0..23)
+    const hourlyCounts = Array(24).fill(0);
+    for (const log of rawLogs) {
+      if (log.timestamp) {
+        const hour = new Date(log.timestamp).getHours();
+        if (hour >= 0 && hour < 24) hourlyCounts[hour]++;
+      }
+    }
+    const peakHours = hourlyCounts.map((count, hour) => ({
+      hour: `${hour}:00`,
+      hourNum: hour,
+      count,
+    })).sort((a, b) => b.count - a.count).slice(0, 4);
+
     // Top products
     const productsCount: Record<string, number> = {};
     for (const log of rawLogs) {
@@ -736,6 +780,11 @@ export async function GET(request: Request) {
       orders_attempted: sessions.filter(s => s.order_attempted).length,
       orders_completed: completedOrdersCount,
       revenue: totalRevenue,
+      average_order_value: averageOrderValue,
+      order_status_counts: orderStatusCounts,
+      device_details: deviceDetails,
+      peak_hours: peakHours,
+      top_buying_wilayas: topBuyingWilayas,
       lost_orders: lostOrders.length,
       lost_orders_with_phone: lostOrdersWithPhone.length,
       top_sources: topSources,

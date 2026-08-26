@@ -36,6 +36,7 @@ interface AnalyticsSummary {
   addToCarts: number;
   orders: number;
   revenue: number;
+  averageOrderValue: number;
   conversionRate: string;
 }
 
@@ -52,6 +53,10 @@ interface AnalyticsData {
   topSources: { source: string; count: number }[];
   topProducts: { id: string; name: string; views: number }[];
   topWilayas?: { id: number; name: string; count: number; percentage: number }[];
+  topBuyingWilayas?: { name: string; count: number; revenue: number }[];
+  orderStatusCounts?: { new: number; shipped: number; delivered: number; cancelled: number };
+  deviceDetails?: { android: number; iphone: number; windows: number; mac: number; other: number };
+  peakHours?: { hour: string; hourNum: number; count: number }[];
 }
 
 interface PageProps {
@@ -195,6 +200,10 @@ function AdminContent({ params }: PageProps) {
             ? `${((completedOrders / totalSessions) * 100).toFixed(1)}%` 
             : '0%';
 
+          const avgOrderVal = completedOrders > 0 
+            ? Math.round((summary.revenue || totalRevenue) / completedOrders) 
+            : 0;
+
           setAnalytics({
             period: analyticsPeriod,
             summary: {
@@ -204,6 +213,7 @@ function AdminContent({ params }: PageProps) {
               addToCarts: summary.add_to_cart || summary.checkout_started || 0,
               orders: completedOrders,
               revenue: summary.revenue || 0,
+              averageOrderValue: summary.average_order_value || avgOrderVal,
               conversionRate: conversionRate,
             },
             funnel: {
@@ -216,6 +226,10 @@ function AdminContent({ params }: PageProps) {
             topSources: summary.top_sources || [],
             topProducts: summary.top_products || [],
             topWilayas: summary.top_wilayas || [],
+            topBuyingWilayas: summary.top_buying_wilayas || [],
+            orderStatusCounts: summary.order_status_counts,
+            deviceDetails: summary.device_details,
+            peakHours: summary.peak_hours || [],
           });
         }
       } catch (error) {
@@ -350,66 +364,72 @@ function AdminContent({ params }: PageProps) {
           ))}
         </div>
 
-        {/* Main Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Main Stats (6 Core KPIs) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           {/* Revenue */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">إجمالي الإيرادات</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loadingOrders ? '...' : `${totalRevenue.toLocaleString()} د.ج`}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CurrencyDollarIcon className="w-6 h-6 text-green-600" />
-              </div>
+              <span className="text-xs text-gray-500 font-bold">إجمالي الإيرادات</span>
+              <span className="p-2 bg-green-50 text-green-600 rounded-xl">💰</span>
             </div>
+            <p className="text-xl font-extrabold text-gray-900 mt-2">
+              {loadingOrders ? '...' : `${totalRevenue.toLocaleString()} د.ج`}
+            </p>
           </div>
 
           {/* Orders */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">إجمالي الطلبات</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loadingOrders ? '...' : totalOrders}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <ShoppingCartIcon className="w-6 h-6 text-blue-600" />
-              </div>
+              <span className="text-xs text-gray-500 font-bold">إجمالي الطلبات</span>
+              <span className="p-2 bg-blue-50 text-blue-600 rounded-xl">📦</span>
             </div>
+            <p className="text-xl font-extrabold text-gray-900 mt-2">
+              {loadingOrders ? '...' : totalOrders}
+            </p>
+          </div>
+
+          {/* Average Order Value */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 font-bold">متوسط السلة (AOV)</span>
+              <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">💳</span>
+            </div>
+            <p className="text-xl font-extrabold text-emerald-700 mt-2">
+              {loadingAnalytics ? '...' : `${(analytics?.summary.averageOrderValue || 0).toLocaleString()} د.ج`}
+            </p>
           </div>
 
           {/* Visitors */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">الزوار</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loadingAnalytics ? '...' : analytics?.summary.uniqueVisitors || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <UsersIcon className="w-6 h-6 text-purple-600" />
-              </div>
+              <span className="text-xs text-gray-500 font-bold">الزوار الفريدون</span>
+              <span className="p-2 bg-purple-50 text-purple-600 rounded-xl">👥</span>
             </div>
+            <p className="text-xl font-extrabold text-purple-700 mt-2">
+              {loadingAnalytics ? '...' : (analytics?.summary.uniqueVisitors || 0).toLocaleString()}
+            </p>
           </div>
 
           {/* Page Views */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">مشاهدات الصفحات</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {loadingAnalytics ? '...' : analytics?.summary.pageViews || 0}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <EyeIcon className="w-6 h-6 text-orange-600" />
-              </div>
+              <span className="text-xs text-gray-500 font-bold">مشاهدات الصفحات</span>
+              <span className="p-2 bg-orange-50 text-orange-600 rounded-xl">👁️</span>
             </div>
+            <p className="text-xl font-extrabold text-orange-700 mt-2">
+              {loadingAnalytics ? '...' : (analytics?.summary.pageViews || 0).toLocaleString()}
+            </p>
+          </div>
+
+          {/* Conversion Rate */}
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500 font-bold">معدل التحويل (CR%)</span>
+              <span className="p-2 bg-teal-50 text-teal-600 rounded-xl">🎯</span>
+            </div>
+            <p className="text-xl font-extrabold text-teal-700 mt-2">
+              {loadingAnalytics ? '...' : analytics?.summary.conversionRate || '0%'}
+            </p>
           </div>
         </div>
 
@@ -605,6 +625,114 @@ function AdminContent({ params }: PageProps) {
                 >
                   <span>{utmCopied ? '✅ تم النسخ بنجاح' : '📋 نسخ الرابط'}</span>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Delivery Status & Peak Activity & Device Breakdown (Enterprise Grid) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Live Delivery Status Breakdown */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <span>🚚</span>
+              <span>توزيع حالات الطلبات والشحن</span>
+            </h2>
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between p-2.5 bg-yellow-50 rounded-xl border border-yellow-200">
+                <span className="font-bold text-yellow-800">📦 طلبات جديدة / قيد الانتظار</span>
+                <span className="font-extrabold text-sm text-yellow-900 font-mono">
+                  {analytics?.orderStatusCounts?.new ?? orders.filter(o => o.status === 'new' || o.status === 'pending').length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 bg-purple-50 rounded-xl border border-purple-200">
+                <span className="font-bold text-purple-800">🚚 قيد الشحن مع EasyAndSpeed</span>
+                <span className="font-extrabold text-sm text-purple-900 font-mono">
+                  {analytics?.orderStatusCounts?.shipped ?? orders.filter(o => o.status === 'shipped').length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 bg-green-50 rounded-xl border border-green-200">
+                <span className="font-bold text-green-800">✅ تم التسليم بنجاح</span>
+                <span className="font-extrabold text-sm text-green-900 font-mono">
+                  {analytics?.orderStatusCounts?.delivered ?? orders.filter(o => o.status === 'delivered').length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 bg-red-50 rounded-xl border border-red-200">
+                <span className="font-bold text-red-800">❌ ملغية</span>
+                <span className="font-extrabold text-sm text-red-900 font-mono">
+                  {analytics?.orderStatusCounts?.cancelled ?? orders.filter(o => o.status === 'cancelled').length}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Peak Shopping Hours */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <span>⚡</span>
+              <span>ساعات الذروة والطلب (أفضل أوقات الإعلانات)</span>
+            </h2>
+            {analytics?.peakHours && analytics.peakHours.length > 0 ? (
+              <div className="space-y-2.5 text-xs">
+                {analytics.peakHours.map((h, i) => (
+                  <div key={i} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
+                    <span className="font-bold text-gray-800 flex items-center gap-2">
+                      <span className="text-[11px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-md font-mono">#{i + 1}</span>
+                      <span>الساعة {h.hour}</span>
+                    </span>
+                    <span className="font-bold text-brand-600 font-mono">{h.count} تفاعل</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 py-4 text-center">جاري جمع بيانات ساعات النشاط...</p>
+            )}
+          </div>
+
+          {/* Device Intelligence Breakdown */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-4">
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <span>📱</span>
+              <span>أجهزة ومتصفحات الزوار</span>
+            </h2>
+            <div className="space-y-3 text-xs">
+              <div>
+                <div className="flex justify-between font-bold mb-1">
+                  <span>🤖 أجهزة Android (هواتف)</span>
+                  <span className="text-green-600 font-mono">{analytics?.deviceDetails?.android || 0}</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-green-500 rounded-full" 
+                    style={{ width: `${Math.min(100, Math.max(10, ((analytics?.deviceDetails?.android || 1) / Math.max(1, analytics?.summary.pageViews || 1)) * 100))}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between font-bold mb-1">
+                  <span>🍎 أجهزة iPhone / iOS</span>
+                  <span className="text-gray-900 font-mono">{analytics?.deviceDetails?.iphone || 0}</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gray-800 rounded-full" 
+                    style={{ width: `${Math.min(100, Math.max(10, ((analytics?.deviceDetails?.iphone || 1) / Math.max(1, analytics?.summary.pageViews || 1)) * 100))}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between font-bold mb-1">
+                  <span>💻 أجهزة الكمبيوتر (Windows / Mac)</span>
+                  <span className="text-blue-600 font-mono">{((analytics?.deviceDetails?.windows || 0) + (analytics?.deviceDetails?.mac || 0))}</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-500 rounded-full" 
+                    style={{ width: `${Math.min(100, Math.max(10, (((analytics?.deviceDetails?.windows || 0) + (analytics?.deviceDetails?.mac || 0)) / Math.max(1, analytics?.summary.pageViews || 1)) * 100))}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
