@@ -77,7 +77,16 @@ export async function POST(request: NextRequest) {
     const familyname = (body.familyname || firstname).toString().trim();
     const address = (body.address || 'Algeria').toString().trim();
     const productList = (body.product_list || body.products_text || 'هواتف وإكسسوارات').toString().trim();
-    const price = parseInt(body.price || body.total || '0') || 0;
+    
+    // Product price only (subtotal) so EasyAndSpeed calculates shipping fee exactly once!
+    let price = parseInt(body.price || '0');
+    if (body.subtotal) {
+      price = parseInt(body.subtotal);
+    } else if (body.total && body.delivery_fee) {
+      price = Math.max(0, parseInt(body.total) - parseInt(body.delivery_fee));
+    } else if (!price && body.total) {
+      price = parseInt(body.total);
+    }
 
     const parcelInput: ParcelInput = {
       order_id: body.order_id || `ORD-${Date.now()}`,

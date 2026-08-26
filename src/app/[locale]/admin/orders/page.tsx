@@ -227,6 +227,9 @@ function OrdersContent({ params }: PageProps) {
         throw new Error(`رقم الهاتف غير صالح: ${order.phone} → ${formattedPhone}`);
       }
 
+      // Calculate product price only (subtotal) so EasyAndSpeed doesn't charge delivery fee twice!
+      const productPriceOnly = order.subtotal || (order.total - (order.delivery_fee || 0));
+
       const response = await fetch('/api/delivery/create-parcel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -241,8 +244,8 @@ function OrdersContent({ params }: PageProps) {
           wilaya_name: order.wilaya,
           commune_name: order.commune,
           product_list: order.products_text || 'هواتف وإكسسوارات',
-          price: order.total,
-          declared_value: order.total,
+          price: productPriceOnly, // سعر السلعة فقط بدون توصيل
+          declared_value: productPriceOnly,
           freeshipping: false,
         }),
       });
