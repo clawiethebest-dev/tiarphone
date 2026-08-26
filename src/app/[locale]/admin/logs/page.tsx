@@ -146,9 +146,55 @@ function LogsContent() {
   const [rawLimit, setRawLimit] = useState<number>(500);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
-  // Export Lost Orders to Excel/CSV
+  // Deduplicate and group lost orders by clean unique phone number
+  const uniqueLostOrders = (() => {
+    const map: Record<string, AnalyzedSession & { attempts_count: number }> = {};
+    for (const session of (sessions.filter(s => s.lost_order && s.customer_phone))) {
+      const cleanPhone = (session.customer_phone || '').replace(/\D/g, '');
+      if (!cleanPhone) continue;
+
+      if (!map[cleanPhone]) {
+        map[cleanPhone] = {
+          ...session,
+          attempts_count: 1,
+        };
+      } else {
+        const existing = map[cleanPhone];
+        existing.attempts_count += 1;
+        if (!existing.customer_name && session.customer_name) existing.customer_name = session.customer_name;
+        if (!existing.customer_phone2 && session.customer_phone2) existing.customer_phone2 = session.customer_phone2;
+        if (!existing.customer_wilaya && session.customer_wilaya) existing.customer_wilaya = session.customer_wilaya;
+        if (!existing.customer_commune && session.customer_commune) existing.customer_commune = session.customer_commune;
+        if (!existing.customer_address && session.customer_address) existing.customer_address = session.customer_address;
+        if (!existing.product_name && session.product_name) existing.product_name = session.product_name;
+        if (!existing.order_total && session.order_total) existing.order_total = session.order_total;
+        if (new Date(session.last_seen || session.first_seen) > new Date(existing.last_seen || existing.first_seen)) {
+          existing.last_seen = session.last_seen || session.first_seen;
+        }
+      }
+    }
+    return Object.values(map).sort(
+      (a, b) => new Date(b.last_seen || b.first_seen).getTime() - new Date(a.last_seen || a.first_seen).getTime()
+    );
+  })();
+
+  const filteredUniqueLostOrders = uniqueLostOrders.filter(s => {
+    if (!lostSearch) return true;
+    const term = lostSearch.toLowerCase();
+    return (
+      (s.customer_phone && s.customer_phone.includes(term)) ||
+      (s.customer_phone2 && s.customer_phone2.includes(term)) ||
+      (s.customer_name && s.customer_name.toLowerCase().includes(term)) ||
+      (s.product_name && s.product_name.toLowerCase().includes(term)) ||
+      (s.customer_wilaya && s.customer_wilaya.toLowerCase().includes(term)) ||
+      (s.customer_commune && s.customer_commune.toLowerCase().includes(term)) ||
+      (s.customer_address && s.customer_address.toLowerCase().includes(term))
+    );
+  });
+
+  // Export Lost Orders to Excel/CSV with complete details
   const exportLostToCSV = () => {
-    if (filteredLostOrdersWithPhone.length === 0) {
+    if (filteredUniqueLostOrders.length === 0) {
       alert('لا توجد طلبات ضائعة بأرقام هواتف لتصديرها');
       return;
     }
@@ -163,12 +209,12 @@ function LogsContent() {
       'المنتج المهتم به',
       'المبلغ المقدر (د.ج)',
       'تاريخ ووقت الزيارة',
-      'حالة المتابعة CRM',
-      'مسار الزائر'
+      'عدد المحاولات',
+      'حالة المتابعة CRM'
     ];
 
-    const rows = filteredLostOrdersWithPhone.map(s => [
-      `"${(s.customer_name || '').replace(/"/g, '""')}"`,
+    const rows = filteredUniqueLostOrders.map(s => [
+      `"${(s.customer_name || 'غير مسجل').replace(/"/g, '""')}"`,
       `"${s.customer_phone || ''}"`,
       `"${s.customer_phone2 || ''}"`,
       `"${(s.customer_wilaya || '').replace(/"/g, '""')}"`,
@@ -177,8 +223,8 @@ function LogsContent() {
       `"${(s.product_name || '').replace(/"/g, '""')}"`,
       s.order_total || 0,
       `"${formatDate(s.last_seen || s.first_seen)}"`,
-      `"${crmStatuses[s.session_id] || 'لم يتم التواصل'}"`,
-      `"${(s.journey_summary || '').replace(/"/g, '""')}"`
+      s.attempts_count || 1,
+      `"${crmStatuses[s.session_id] || 'لم يتم التواصل'}"`
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
@@ -186,7 +232,7 @@ function LogsContent() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `tiar_lost_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `tiar_unique_lost_leads_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -195,7 +241,7 @@ function LogsContent() {
 
   // Export to Printable PDF Report
   const exportLostToPDF = () => {
-    if (filteredLostOrdersWithPhone.length === 0) {
+    if (filteredUniqueLostOrders.length === 0) {
       alert('لا توجد بيانات للطباعة');
       return;
     }
@@ -226,8 +272,8 @@ function LogsContent() {
       <body>
         <div class="header">
           <div>
-            <h1>📱 طيار بوتيك - تقرير السلات والطلبات الضائعة</h1>
-            <p style="margin: 4px 0; color: #666; font-size: 13px;">تاريخ استخراج التقرير: ${new Date().toLocaleString('ar-DZ')} | إجمالي الفرص: ${filteredLostOrdersWithPhone.length}</p>
+            <h1>📱 طيار بوتيك - تقرير الزبائن والسلات الضائعة الفريدة</h1>
+            <p style="margin: 4px 0; color: #666; font-size: 13px;">تاريخ التقرير: ${new Date().toLocaleString('ar-DZ')} | إجمالي الزبائن الفريدين: ${filteredUniqueLostOrders.length}</p>
           </div>
         </div>
         <table>
@@ -238,14 +284,15 @@ function LogsContent() {
               <th>الهاتف 1</th>
               <th>الهاتف 2</th>
               <th>الولاية والبلدية</th>
-              <th>العنوان</th>
+              <th>العنوان بالتفصيل</th>
               <th>المنتج</th>
               <th>المبلغ</th>
+              <th>المحاولات</th>
               <th>الوقت</th>
             </tr>
           </thead>
           <tbody>
-            ${filteredLostOrdersWithPhone.map((s, i) => `
+            ${filteredUniqueLostOrders.map((s, i) => `
               <tr>
                 <td>${i + 1}</td>
                 <td><strong>${s.customer_name || 'غير مدخل'}</strong></td>
@@ -255,6 +302,7 @@ function LogsContent() {
                 <td>${s.customer_address || '-'}</td>
                 <td>${s.product_name || '-'}</td>
                 <td>${s.order_total ? s.order_total.toLocaleString() + ' د.ج' : '-'}</td>
+                <td><span style="background:#f0fdf4;color:#166534;padding:2px 6px;border-radius:4px;">${s.attempts_count || 1} محاولات</span></td>
                 <td>${formatDate(s.last_seen || s.first_seen)}</td>
               </tr>
             `).join('')}
@@ -273,16 +321,31 @@ function LogsContent() {
     setShowExportMenu(false);
   };
 
-  // Copy WhatsApp Broadcast list to clipboard
+  // Copy WhatsApp Broadcast list with FULL customer details
   const copyWhatsAppBroadcastList = () => {
-    const phones = Array.from(new Set(filteredLostOrdersWithPhone.map(s => s.customer_phone).filter(Boolean)));
-    if (phones.length === 0) {
-      alert('لا توجد أرقام هواتف لنسخها');
+    if (filteredUniqueLostOrders.length === 0) {
+      alert('لا توجد بيانات عملاء لنسخها');
       return;
     }
-    const text = phones.join('\n');
+
+    const lines = filteredUniqueLostOrders.map((s, i) => {
+      const parts = [
+        `${i + 1}.`,
+        s.customer_name ? `👤 ${s.customer_name}` : '',
+        `📱 ${s.customer_phone}`,
+        s.customer_phone2 ? `(رقم 2: ${s.customer_phone2})` : '',
+        s.customer_wilaya ? `📍 ${s.customer_wilaya}` : '',
+        s.customer_address ? `🏠 ${s.customer_address}` : '',
+        s.product_name ? `📦 ${s.product_name}` : '',
+        s.order_total ? `💰 ${s.order_total.toLocaleString()} د.ج` : '',
+        s.attempts_count > 1 ? `[محاولات: ${s.attempts_count}]` : ''
+      ].filter(Boolean);
+      return parts.join(' | ');
+    });
+
+    const text = `📋 قائمة الزبائن والسلات الضائعة (طيار بوتيك):\n\n` + lines.join('\n\n');
     navigator.clipboard.writeText(text);
-    alert(`✅ تم نسخ ${phones.length} رقم هاتف بنجاح إلى الحافظة!\nيمكنك الآن لصقها مباشرة في برامج الإرسال الجماعي أو WhatsApp Broadcast.`);
+    alert(`✅ تم نسخ كامل بيانات ${filteredUniqueLostOrders.length} زبون فريد بنجاح إلى الحافظة!\n(تشمل: الاسم، الهاتف 1 و 2، الولاية، العنوان، المنتج، والسعر).`);
     setShowExportMenu(false);
   };
 
@@ -498,24 +561,24 @@ function LogsContent() {
           </div>
         </div>
 
-        {/* Lost Orders Alert (The Pink/Red Box) */}
-        {lostOrdersWithPhone.length > 0 && (
+        {/* Lost Orders Alert (The Pink/Red Box - Grouped by Unique Customer) */}
+        {filteredUniqueLostOrders.length > 0 && (
           <div className="bg-red-50 border-2 border-red-500 rounded-2xl p-5 mb-8 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-200 pb-3">
               <div>
                 <h2 className="text-lg font-extrabold text-red-700 flex items-center gap-2">
                   <span>⚠️</span>
-                  <span>طلبات ضائعة وسلات متروكة ({filteredLostOrdersWithPhone.length} فرصة بيع مؤكدة)</span>
+                  <span>طلبات ضائعة وسلات متروكة ({filteredUniqueLostOrders.length} زبون فريد)</span>
                 </h2>
                 <p className="text-xs text-red-600 mt-0.5">
-                  هؤلاء زبائن أدخلوا معلوماتهم في نموذج الطلب ولم يكتمل شراؤهم — تواصل معهم لاسترجاع مبيعاتك فوراً
+                  تم توحيد الجلسات المكررة لكل زبون لعرض البيانات الحقيقية والكاملة وتسهيل استعادة المبيعات
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="search"
-                  placeholder="🔍 بحث في أرقام واسماء العملاء..."
+                  placeholder="🔍 بحث بالهاتف، الاسم أو الولاية..."
                   value={lostSearch}
                   onChange={e => setLostSearch(e.target.value)}
                   className="px-3 py-1.5 text-xs bg-white border border-red-300 rounded-lg focus:outline-none focus:border-red-500 w-52 font-medium"
@@ -523,7 +586,7 @@ function LogsContent() {
                 <select
                   value={lostLimit}
                   onChange={e => setLostLimit(parseInt(e.target.value))}
-                  className="px-2.5 py-1.5 text-xs bg-white border border-red-300 rounded-lg focus:outline-none"
+                  className="px-2.5 py-1.5 text-xs bg-white border border-red-300 rounded-lg focus:outline-none font-bold"
                 >
                   <option value={20}>عرض 20</option>
                   <option value={50}>عرض 50</option>
@@ -534,7 +597,7 @@ function LogsContent() {
             </div>
 
             <div className="space-y-4">
-              {filteredLostOrdersWithPhone.slice(0, lostLimit).map((session) => {
+              {filteredUniqueLostOrders.slice(0, lostLimit).map((session) => {
                 const currentTemplate = selectedTemplate[session.session_id] || 'free_shipping';
                 const currentStatus = crmStatuses[session.session_id] || 'pending';
 
@@ -560,6 +623,12 @@ function LogsContent() {
                             <span>👤</span>
                             <span>{session.customer_name || 'الاسم غير مسجل'}</span>
                           </span>
+
+                          {session.attempts_count > 1 && (
+                            <span className="bg-amber-100 text-amber-800 border border-amber-300 font-extrabold px-2.5 py-0.5 rounded-full text-xs">
+                              🔄 تكررت {session.attempts_count} مرات
+                            </span>
+                          )}
 
                           <span className="font-bold bg-purple-50 text-purple-700 px-3 py-1 rounded-xl border border-purple-200 truncate max-w-full">
                             📦 {session.product_name || 'المنتجات'}
