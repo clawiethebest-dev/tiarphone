@@ -557,7 +557,7 @@ export async function GET(request: Request) {
         .limit(2000),
       supabase
         .from('orders')
-        .select('id, total, status, created_at, products_text, traffic_source, wilaya', { count: 'exact' })
+        .select('id, customer_name, phone, phone2, wilaya, commune, address, total, status, created_at, products_text, traffic_source', { count: 'exact' })
         .gte('created_at', isoStart)
         .order('created_at', { ascending: false }),
       supabase
@@ -580,6 +580,74 @@ export async function GET(request: Request) {
         sessions = Array.from(sessionMap.values()).sort(
           (a, b) => new Date(b.last_seen || b.first_seen).getTime() - new Date(a.last_seen || a.first_seen).getTime()
         );
+      }
+    }
+
+    // Cross-Session Customer Profile Stitching (Unify customer identities across all logs & sessions)
+    const phoneProfile: Record<string, {
+      name?: string;
+      phone2?: string;
+      wilaya?: string;
+      commune?: string;
+      address?: string;
+      product?: string;
+      total?: number;
+    }> = {};
+
+    // 1. Scan raw logs for names, phones, wilayas, addresses
+    for (const r of rawLogs) {
+      const data = r.data || {};
+      const str = JSON.stringify(data);
+      const phoneMatches = str.match(/0[567]\d{8}/g);
+      if (phoneMatches) {
+        for (const p of phoneMatches) {
+          if (!phoneProfile[p]) phoneProfile[p] = {};
+          if (data.name && !phoneProfile[p].name) phoneProfile[p].name = String(data.name);
+          if (data.fullName && !phoneProfile[p].name) phoneProfile[p].name = String(data.fullName);
+          if (data.customer_name && !phoneProfile[p].name) phoneProfile[p].name = String(data.customer_name);
+          if (data.phone2 && !phoneProfile[p].phone2) phoneProfile[p].phone2 = String(data.phone2);
+          if (data.wilaya && !phoneProfile[p].wilaya) phoneProfile[p].wilaya = String(data.wilaya);
+          if (data.commune && !phoneProfile[p].commune) phoneProfile[p].commune = String(data.commune);
+          if (data.address && !phoneProfile[p].address) phoneProfile[p].address = String(data.address);
+          if (data.product && !phoneProfile[p].product) phoneProfile[p].product = String(data.product);
+          if (data.product_name && !phoneProfile[p].product) phoneProfile[p].product = String(data.product_name);
+          if (data.productName && !phoneProfile[p].product) phoneProfile[p].product = String(data.productName);
+          if (data.total && !phoneProfile[p].total) phoneProfile[p].total = Number(data.total);
+          if (data.product_price && !phoneProfile[p].total) phoneProfile[p].total = Number(data.product_price);
+        }
+      }
+    }
+
+    // 2. Scan orders for confirmed customer profiles
+    for (const o of orders) {
+      if (o.phone) {
+        const p = String(o.phone).replace(/\D/g, '');
+        if (p.length >= 9) {
+          if (!phoneProfile[p]) phoneProfile[p] = {};
+          if (o.customer_name && !phoneProfile[p].name) phoneProfile[p].name = o.customer_name;
+          if (o.wilaya && !phoneProfile[p].wilaya) phoneProfile[p].wilaya = o.wilaya;
+          if (o.commune && !phoneProfile[p].commune) phoneProfile[p].commune = o.commune;
+          if (o.address && !phoneProfile[p].address) phoneProfile[p].address = o.address;
+          if (o.products_text && !phoneProfile[p].product) phoneProfile[p].product = o.products_text;
+          if (o.total && !phoneProfile[p].total) phoneProfile[p].total = Number(o.total);
+        }
+      }
+    }
+
+    // 3. Propagate stitched profile to all sessions and lost orders
+    for (const s of sessions) {
+      if (s.customer_phone) {
+        const p = String(s.customer_phone).replace(/\D/g, '');
+        const profile = phoneProfile[p];
+        if (profile) {
+          if (!s.customer_name && profile.name) s.customer_name = profile.name;
+          if (!s.customer_phone2 && profile.phone2) s.customer_phone2 = profile.phone2;
+          if (!s.customer_wilaya && profile.wilaya) s.customer_wilaya = profile.wilaya;
+          if (!s.customer_commune && profile.commune) s.customer_commune = profile.commune;
+          if (!s.customer_address && profile.address) s.customer_address = profile.address;
+          if (!s.product_name && profile.product) s.product_name = profile.product;
+          if (!s.order_total && profile.total) s.order_total = profile.total;
+        }
       }
     }
 
