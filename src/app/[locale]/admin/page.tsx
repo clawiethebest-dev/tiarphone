@@ -642,7 +642,7 @@ function AdminContent({ params }: PageProps) {
               <div className="flex items-center justify-between p-2.5 bg-yellow-50 rounded-xl border border-yellow-200">
                 <span className="font-bold text-yellow-800">📦 طلبات جديدة / قيد الانتظار</span>
                 <span className="font-extrabold text-sm text-yellow-900 font-mono">
-                  {analytics?.orderStatusCounts?.new ?? orders.filter(o => o.status === 'new' || o.status === 'pending').length}
+                  {analytics?.orderStatusCounts?.new ?? orders.filter(o => o.status === 'new' || o.status === 'pending' || o.status === 'confirmed').length}
                 </span>
               </div>
               <div className="flex items-center justify-between p-2.5 bg-purple-50 rounded-xl border border-purple-200">
