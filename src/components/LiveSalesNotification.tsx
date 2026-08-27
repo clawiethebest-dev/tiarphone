@@ -43,22 +43,58 @@ const TIME_AGO_LIST = [
 export default function LiveSalesNotification({ locale = 'ar' }: { locale?: string }) {
   const [currentSale, setCurrentSale] = useState<SaleEvent | null>(null);
   const [visible, setVisible] = useState(false);
+  const [realOrders, setRealOrders] = useState<any[]>([]);
+
+  // Fetch real confirmed orders dynamically
+  useEffect(() => {
+    fetch('/api/orders')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setRealOrders(data.data);
+        }
+      })
+      .catch(() => { /* fallback */ });
+  }, []);
 
   useEffect(() => {
     // Show first toast after 8 seconds, then every 30-45 seconds
     const showNotification = () => {
-      const buyer = SAMPLE_BUYERS[Math.floor(Math.random() * SAMPLE_BUYERS.length)];
-      const product = ALL_PRODUCTS[Math.floor(Math.random() * ALL_PRODUCTS.length)];
-      const wilayaInfo = ALGERIA_WILAYAS.find(w => w.id === buyer.wilayaId);
-      const wilayaName = wilayaInfo ? wilayaInfo.name_ar : 'وهران';
+      let buyerName = '';
+      let wilayaName = '';
+      let productSlug = '';
+      let productName = '';
+      let productImage = '';
       const timeAgo = TIME_AGO_LIST[Math.floor(Math.random() * TIME_AGO_LIST.length)];
 
+      if (realOrders.length > 0) {
+        const order = realOrders[Math.floor(Math.random() * realOrders.length)];
+        const nameParts = (order.customer_name || 'زبون').trim().split(' ');
+        buyerName = nameParts[0] + (nameParts[1] ? ' ' + nameParts[1][0] + '.' : '');
+        wilayaName = (order.wilaya || 'وهران').replace(/^\d+\s*-\s*/, '').split('(')[0].trim();
+        
+        // Find matching product
+        const matchedProd = ALL_PRODUCTS.find(p => order.products_text?.includes(p.name) || p.name.includes(order.products_text)) || ALL_PRODUCTS[0];
+        productSlug = matchedProd.slug;
+        productName = matchedProd.name;
+        productImage = matchedProd.images[0] || '/placeholder.png';
+      } else {
+        const buyer = SAMPLE_BUYERS[Math.floor(Math.random() * SAMPLE_BUYERS.length)];
+        const product = ALL_PRODUCTS[Math.floor(Math.random() * ALL_PRODUCTS.length)];
+        const wilayaInfo = ALGERIA_WILAYAS.find(w => w.id === buyer.wilayaId);
+        buyerName = buyer.name;
+        wilayaName = wilayaInfo ? wilayaInfo.name_ar : 'وهران';
+        productSlug = product.slug;
+        productName = product.name;
+        productImage = product.images[0] || '/placeholder.png';
+      }
+
       setCurrentSale({
-        name: buyer.name,
+        name: buyerName,
         wilaya: wilayaName,
-        productSlug: product.slug,
-        productName: product.name,
-        productImage: product.images[0] || '/placeholder.png',
+        productSlug,
+        productName,
+        productImage,
         timeAgo,
       });
 
@@ -77,7 +113,7 @@ export default function LiveSalesNotification({ locale = 'ar' }: { locale?: stri
       clearTimeout(initialTimeout);
       clearInterval(interval);
     };
-  }, []);
+  }, [realOrders]);
 
   if (!visible || !currentSale) return null;
 

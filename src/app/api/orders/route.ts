@@ -209,12 +209,27 @@ export async function GET(request: Request) {
       
       const productsText = order.products_text || order.notes || 'طلب منتجات';
       
+      // Real dynamic calculation strictly from database values
+      const subtotal = Number(order.subtotal) || 0;
+      const deliveryFee = Number(order.delivery_fee) || 0;
+      const total = Number(order.total) || (subtotal > 0 ? (subtotal + deliveryFee) : 0);
+      
       return {
         ...order,
         order_number: order.order_number || order.id,
+        customer_name: order.customer_name || 'زبون',
+        phone: order.phone || '',
         wilaya: wilayaName || 'الجزائر',
         wilaya_id: wilayaId || 16,
+        commune: order.commune || '',
+        address: order.address || '',
         products_text: productsText,
+        subtotal: subtotal,
+        delivery_fee: deliveryFee,
+        total: total,
+        delivery_type: order.delivery_type || 'home',
+        status: order.status || 'new',
+        created_at: order.created_at || new Date().toISOString(),
       };
     });
 

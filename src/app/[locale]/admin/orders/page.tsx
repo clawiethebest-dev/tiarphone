@@ -606,10 +606,10 @@ function OrdersContent({ params }: PageProps) {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-gray-600 text-sm max-w-[200px] truncate">
-                      {order.products_text}
+                      {order.products_text || 'طلب منتجات'}
                     </td>
                     <td className="py-3 px-4 font-medium text-brand-600">
-                      {order.total.toLocaleString()} د.ج
+                      {(order.total || 0).toLocaleString()} د.ج
                     </td>
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>
@@ -617,11 +617,11 @@ function OrdersContent({ params }: PageProps) {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-500 text-sm">
-                      {new Date(order.created_at).toLocaleDateString('ar-DZ', { 
+                      {order.created_at ? new Date(order.created_at).toLocaleDateString('ar-DZ', { 
                         day: '2-digit', 
                         month: 'short', 
                         year: 'numeric' 
-                      })}
+                      }) : '-'}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
@@ -762,15 +762,15 @@ function OrdersContent({ params }: PageProps) {
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">المجموع الفرعي:</span>
-                    <span>{selectedOrder.subtotal?.toLocaleString() || 0} د.ج</span>
+                    <span>{(selectedOrder.subtotal || 0).toLocaleString()} د.ج</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">رسوم التوصيل ({selectedOrder.delivery_type}):</span>
-                    <span>{selectedOrder.delivery_fee?.toLocaleString() || 0} د.ج</span>
+                    <span className="text-gray-500">رسوم التوصيل ({selectedOrder.delivery_type === 'desk' ? 'المكتب' : 'باب المنزل'}):</span>
+                    <span>{(selectedOrder.delivery_fee || 0).toLocaleString()} د.ج</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg border-t border-gray-200 pt-2 mt-2">
                     <span>المجموع:</span>
-                    <span className="text-brand-600">{selectedOrder.total.toLocaleString()} د.ج</span>
+                    <span className="text-brand-600">{(selectedOrder.total || 0).toLocaleString()} د.ج</span>
                   </div>
                 </div>
               </div>
@@ -778,7 +778,7 @@ function OrdersContent({ params }: PageProps) {
               {selectedOrder.tracking && (
                 <div className="border-t border-gray-100 pt-4">
                   <h3 className="font-bold text-gray-900 mb-2">رقم التتبع</h3>
-                  <p className="text-brand-600 font-mono bg-brand-50 p-3 rounded-lg">{selectedOrder.tracking}</p>
+                  <p className="text-brand-600 font-mono bg-brand-50 p-3 rounded-lg font-bold">{selectedOrder.tracking}</p>
                 </div>
               )}
 
@@ -790,7 +790,7 @@ function OrdersContent({ params }: PageProps) {
               )}
 
               <div className="border-t border-gray-100 pt-4 text-xs text-gray-400">
-                <p>تاريخ الطلب: {new Date(selectedOrder.created_at).toLocaleString('ar-DZ')}</p>
+                <p>تاريخ الطلب: {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('ar-DZ') : '-'}</p>
               </div>
             </div>
 
