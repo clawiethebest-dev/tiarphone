@@ -2,8 +2,51 @@ import { NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import FALLBACK_COMMUNES from '@/data/communes.json';
 import { ALGERIA_WILAYAS } from '@/data/wilayas';
+import { ALL_PRODUCTS } from '@/data/products';
 
 const allCommunes = (FALLBACK_COMMUNES as any).communes || [];
+
+// Normalize a product name for matching against the catalog (strip emojis, diacritics, punctuation)
+function normalizeName(name: string): string {
+  return (name || '')
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/^(باك|pack)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+// Resolve each product line from the catalog so prices always come from product data (never hardcoded here)
+function resolveProductAmounts(productsText: string) {
+  const lines = (productsText || '')
+    .split('+')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  let subtotal = 0;
+
+  for (const line of lines) {
+    const qtyMatch = line.match(/x(\d+)\s*[-—]?\s*(\d+(?:\.\d+)?)\s*د?\.?ج?/i) || line.match(/x\s*(\d+)/i);
+    const qty = qtyMatch ? parseInt(qtyMatch[1]) || 1 : 1;
+    const explicitPrice = line.match(/(\d+(?:\.\d+)?)\s*د\.ج/i);
+
+    const normalizedLine = normalizeName(line);
+    const matched = ALL_PRODUCTS.find((p) => {
+      const n = normalizeName(p.name);
+      return normalizedLine.includes(n) && n.length >= 4;
+    });
+
+    const unitPrice =
+      matched?.price ||
+      Number(explicitPrice?.[1]) ||
+      0;
+
+    subtotal += unitPrice * qty;
+  }
+
+  return subtotal;
+}
 
 export async function POST(request: Request) {
   try {
@@ -210,9 +253,21 @@ export async function GET(request: Request) {
       const productsText = order.products_text || order.notes || 'طلب منتجات';
       
       // Real dynamic calculation strictly from database values
-      const subtotal = Number(order.subtotal) || 0;
+      const storedSubtotal = Number(order.subtotal) || 0;
       const deliveryFee = Number(order.delivery_fee) || 0;
-      const total = Number(order.total) || (subtotal > 0 ? (subtotal + deliveryFee) : 0);
+      let subtotal = storedSubtotal;
+      let total = Number(order.total) || 0;
+
+      // If the stored prices are missing/zero, recompute from the product catalog
+      if (storedSubtotal <= 0 || total <= 0) {
+        subtotal = resolveProductAmounts(productsText);
+        if (!total) total = subtotal + deliveryFee;
+        if (subtotal <= 0 && total > 0) subtotal = total - deliveryFee;
+      }
+      if (subtotal <= 0 && total <= 0) {
+        subtotal = 0;
+        total = 0;
+      }
       
       return {
         ...order,
