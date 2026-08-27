@@ -9,7 +9,7 @@ import { ShieldCheckIcon, TruckIcon, EyeIcon, FireIcon, ClockIcon } from '@heroi
 import { getProductBySlug, ALL_PRODUCTS } from '@/data/products';
 import OrderPopup from '@/components/OrderPopup';
 import { formatPrice } from '@/lib/utils';
-import type { Locale } from '@/types';
+import type { Locale, Product } from '@/types';
 
 export default function ProductPage() {
   const params = useParams();
@@ -17,9 +17,22 @@ export default function ProductPage() {
   const slug = params.slug as string;
   const locale = params.locale as Locale;
   
-  const product = getProductBySlug(slug);
+  const [product, setProduct] = useState<Product | null>(getProductBySlug(slug) || null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isOrderOpen, setIsOrderOpen] = useState(false);
+
+  // Fetch dynamic product from API
+  useEffect(() => {
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.data)) {
+          const found = d.data.find((p: any) => p.slug === slug);
+          if (found) setProduct(found);
+        }
+      })
+      .catch(() => { /* fallback */ });
+  }, [slug]);
 
   // Urgency: Live Countdown Timer
   const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 28, seconds: 45 });

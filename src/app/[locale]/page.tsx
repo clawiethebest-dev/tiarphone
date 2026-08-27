@@ -2,6 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import HeroSection from '@/components/HeroSection';
@@ -12,13 +13,25 @@ import CategoryBanners from '@/components/CategoryBanners';
 import CustomerReviews from '@/components/CustomerReviews';
 import WhyChooseUs from '@/components/WhyChooseUs';
 import { ALL_PRODUCTS } from '@/data/products';
-import type { Locale } from '@/types';
+import type { Locale, Product } from '@/types';
 
 export default function HomePage() {
   const params = useParams();
   const t = useTranslations();
   const locale = params.locale as Locale;
+  const [products, setProducts] = useState<Product[]>(ALL_PRODUCTS);
   
+  useEffect(() => {
+    fetch('/api/products')
+      .then(res => res.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          setProducts(d.data);
+        }
+      })
+      .catch(() => { /* fallback to catalog */ });
+  }, []);
+
   const translations = {
     heroTitle: t('heroTitle'),
     heroSubtitle: t('heroSubtitle'),
@@ -40,8 +53,8 @@ export default function HomePage() {
     currency: t('currency'),
   };
 
-  const featuredProducts = ALL_PRODUCTS.filter(p => p.featured);
-  const dealsProducts = ALL_PRODUCTS.filter(p => p.originalPrice && p.originalPrice > p.price);
+  const featuredProducts = products.filter(p => p.featured);
+  const dealsProducts = products.filter(p => (p.originalPrice && p.originalPrice > p.price) || ((p as any).original_price && (p as any).original_price > p.price));
 
   return (
     <div className="min-h-screen">
