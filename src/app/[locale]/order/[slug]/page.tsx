@@ -61,6 +61,7 @@ export default function OrderPage({ params }: OrderPageProps) {
     address: '',
     deliveryType: 'home' as 'home' | 'desk',
   });
+  const [communeText, setCommuneText] = useState('');
 
   useEffect(() => {
     params.then(p => {
@@ -123,6 +124,7 @@ export default function OrderPage({ params }: OrderPageProps) {
   // Calculate prices
   const selectedWilaya = wilayas.find(w => w.id === form.wilayaId);
   const selectedCommune = communes.find(c => c.id === form.communeId);
+  const deliverableCommunes = communes.filter(c => c.is_deliverable);
   
   const deliveryFee = selectedWilaya
     ? form.deliveryType === 'home'
@@ -147,7 +149,7 @@ export default function OrderPage({ params }: OrderPageProps) {
         wilayaId: form.wilayaId,
         wilayaName: selectedWilaya?.name || '',
         communeId: form.communeId,
-        communeName: selectedCommune?.name || '',
+        communeName: selectedCommune?.name || communeText.trim() || '',
         address: form.address,
         deliveryType: form.deliveryType,
         items: [{
@@ -427,7 +429,7 @@ export default function OrderPage({ params }: OrderPageProps) {
               <div className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500">
                 جاري تحميل البلديات...
               </div>
-            ) : (
+            ) : deliverableCommunes.length > 0 ? (
               <select
                 required
                 value={form.communeId}
@@ -436,12 +438,25 @@ export default function OrderPage({ params }: OrderPageProps) {
                 disabled={!form.wilayaId}
               >
                 <option value={0}>اختر البلدية</option>
-                {communes.filter(c => c.is_deliverable).map(commune => (
+                {deliverableCommunes.map(commune => (
                   <option key={commune.id} value={commune.id}>
                     {commune.name}
                   </option>
                 ))}
               </select>
+            ) : (
+              <input
+                type="text"
+                required
+                value={communeText}
+                onChange={e => {
+                  setCommuneText(e.target.value);
+                  setForm({ ...form, communeId: 0 });
+                }}
+                placeholder="اكتب اسم البلدية أو المنطقة"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white"
+                disabled={!form.wilayaId}
+              />
             )}
           </div>
 
@@ -530,7 +545,7 @@ export default function OrderPage({ params }: OrderPageProps) {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={submitting || !form.wilayaId || !form.communeId}
+            disabled={submitting || !form.wilayaId || (!form.communeId && !communeText.trim())}
             className="w-full py-4 bg-red-500 hover:bg-red-600 disabled:bg-gray-300 text-white font-bold text-lg rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed"
           >
             {submitting ? (

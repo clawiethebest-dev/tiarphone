@@ -150,6 +150,7 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
   const [showPhone2, setShowPhone2] = useState(false);
   const [wilayas, setWilayas] = useState<Wilaya[]>([]);
   const [communes, setCommunes] = useState<Commune[]>([]);
+  const [communeText, setCommuneText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -252,6 +253,8 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
       } catch (e) { /* ignore adblock */ }
       
       const selectedCommune = filteredCommunes.find(c => c.id === parseInt(formData.commune_id));
+      const communeId = selectedCommune ? parseInt(formData.commune_id) : 0;
+      const communeName = selectedCommune?.name || communeText.trim() || '';
       
       const orderData = {
         ...formData,
@@ -263,7 +266,8 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
         subtotal: productPrice,
         total,
         wilaya_name: selectedWilaya?.name || '',
-        commune_name: selectedCommune?.name || '',
+        commune_id: communeId,
+        commune_name: communeName,
         traffic_source: trafficSourceData.traffic_source,
         landing_page: trafficSourceData.landing_page,
         lang,
@@ -577,27 +581,46 @@ export default function OrderPopup({ isOpen, onClose, product, lang }: OrderPopu
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t.commune} *
                     </label>
-                    <select
-                      name="commune"
-                      required
-                      disabled={!formData.wilaya_id}
-                      className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-100"
-                      value={formData.commune_id}
-                      onChange={(e) => {
-                        const updated = { ...formData, commune_id: e.target.value };
-                        setFormData(updated);
-                        const selC = filteredCommunes.find(c => c.id === parseInt(e.target.value));
-                        tracker.log('field_input', { field: 'commune', value: selC?.name || e.target.value });
-                        syncAbandonedRecovery(updated);
-                      }}
-                    >
-                      <option value="">{t.selectCommune}</option>
-                      {filteredCommunes.map((commune) => (
-                        <option key={commune.id} value={commune.id}>
-                          {commune.name}
-                        </option>
-                      ))}
-                    </select>
+                    {filteredCommunes.length > 0 ? (
+                      <select
+                        name="commune"
+                        required
+                        disabled={!formData.wilaya_id}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-100"
+                        value={formData.commune_id}
+                        onChange={(e) => {
+                          const updated = { ...formData, commune_id: e.target.value };
+                          setFormData(updated);
+                          const selC = filteredCommunes.find(c => c.id === parseInt(e.target.value));
+                          tracker.log('field_input', { field: 'commune', value: selC?.name || e.target.value });
+                          syncAbandonedRecovery(updated);
+                        }}
+                      >
+                        <option value="">{t.selectCommune}</option>
+                        {filteredCommunes.map((commune) => (
+                          <option key={commune.id} value={commune.id}>
+                            {commune.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        name="commune"
+                        required
+                        disabled={!formData.wilaya_id}
+                        placeholder={t.selectCommune}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:bg-gray-100"
+                        value={communeText}
+                        onChange={(e) => {
+                          const updated = { ...formData, commune_id: '' };
+                          setFormData(updated);
+                          setCommuneText(e.target.value);
+                          tracker.log('field_input', { field: 'commune', value: e.target.value });
+                        }}
+                        onBlur={() => syncAbandonedRecovery()}
+                      />
+                    )}
                   </div>
 
                   {/* Address */}
