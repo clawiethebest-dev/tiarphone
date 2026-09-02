@@ -63,12 +63,6 @@ function SettingsContent({ params }: PageProps) {
 
   useEffect(() => {
     params.then(p => setLocale(p.locale));
-    try {
-      const savedPixels = localStorage.getItem('tiar_pixels_config');
-      if (savedPixels) {
-        setPixels(JSON.parse(savedPixels));
-      }
-    } catch (e) { /* ignore */ }
   }, [params]);
 
   useEffect(() => {
@@ -84,6 +78,22 @@ function SettingsContent({ params }: PageProps) {
           }
         })
         .catch(err => console.error('Error loading delivery settings:', err));
+      
+      // Load pixels settings from API
+      fetch('/api/settings/pixels')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data) {
+            setPixels({
+              facebook: data.data.facebook?.length ? data.data.facebook : [''],
+              tiktok: data.data.tiktok?.length ? data.data.tiktok : [''],
+              google: data.data.google?.length ? data.data.google : [''],
+              snapchat: data.data.snapchat?.length ? data.data.snapchat : [''],
+              twitter: data.data.twitter?.length ? data.data.twitter : [''],
+            });
+          }
+        })
+        .catch(err => console.error('Error loading pixels settings:', err));
     }
   }, [searchParams]);
 
@@ -111,10 +121,25 @@ function SettingsContent({ params }: PageProps) {
     }));
   };
 
+  const [saving, setSaving] = useState(false);
+
   const handleSave = async () => {
+    setSaving(true);
+    
     try {
-      localStorage.setItem('tiar_pixels_config', JSON.stringify(pixels));
-    } catch (e) { /* ignore */ }
+      // Save pixels settings to API (database)
+      const pixelsRes = await fetch('/api/settings/pixels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pixels),
+      });
+      const pixelsData = await pixelsRes.json();
+      if (!pixelsData.success) {
+        console.error('Error saving pixels:', pixelsData.error);
+      }
+    } catch (error) {
+      console.error('Error saving pixels settings:', error);
+    }
 
     // Save delivery settings to API
     try {
@@ -127,6 +152,7 @@ function SettingsContent({ params }: PageProps) {
       console.error('Error saving delivery settings:', error);
     }
     
+    setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

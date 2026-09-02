@@ -7,13 +7,21 @@
 
 // Facebook Pixel ID
 const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || '1035868502633279';
-// TikTok Pixel ID  
-const TT_PIXEL_ID = process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID || 'D9SE8ARC77U40SOI9EG0';
+
+// TikTok Pixel IDs - All 3 pixels
+const TT_PIXEL_IDS = [
+  'DA10P6BC77U9J4MASLAG', // Mazi pixie - Primary
+  'DABICCJC77UDHLL3BCJG', // Tiar Boutique Pixel
+  'D9SE8ARC77U40SOI9EG0', // Original Pixel
+];
+
+// Legacy single pixel ID for backward compatibility
+const TT_PIXEL_ID = TT_PIXEL_IDS[0];
 
 // Pixel configuration
 export const PIXEL_CONFIG = {
   facebook: [FB_PIXEL_ID],
-  tiktok: [TT_PIXEL_ID],
+  tiktok: TT_PIXEL_IDS,
   snapchat: [] as string[],
   google: [] as string[],
   twitter: [] as string[],
@@ -34,7 +42,16 @@ declare global {
   interface Window {
     fbq: any;
     ttq: any;
+    __TIKTOK_PIXEL_IDS__?: string[];
   }
+}
+
+// Get TikTok pixel IDs from window (set by server) or fallback to defaults
+function getTikTokPixelIds(): string[] {
+  if (isBrowser && window.__TIKTOK_PIXEL_IDS__?.length) {
+    return window.__TIKTOK_PIXEL_IDS__;
+  }
+  return TT_PIXEL_IDS;
 }
 
 interface AddToCartParams {
@@ -63,9 +80,17 @@ export function trackPageView() {
     window.fbq('track', 'PageView');
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('PageView');
+  // TikTok Pixels - track on all instances (from database or defaults)
+  if (window.ttq) {
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('PageView');
+      } catch (e) {
+        // Fallback to default tracking
+        window.ttq.track('PageView');
+      }
+    });
   }
 }
 
@@ -85,14 +110,22 @@ export function trackAddToCart(params: AddToCartParams) {
     });
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('AddToCart', {
+  // TikTok Pixels - track on all instances
+  if (window.ttq) {
+    const ttData = {
       content_id: params.content_id,
       content_name: params.content_name,
       value: params.value,
       currency: params.currency,
       quantity: params.quantity,
+    };
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('AddToCart', ttData);
+      } catch (e) {
+        window.ttq.track('AddToCart', ttData);
+      }
     });
   }
 }
@@ -110,12 +143,16 @@ export function trackInitiateCheckout(value: number, numItems: number) {
     });
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('InitiateCheckout', {
-      value,
-      currency: 'DZD',
-      quantity: numItems,
+  // TikTok Pixels - track on all instances
+  if (window.ttq) {
+    const ttData = { value, currency: 'DZD', quantity: numItems };
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('InitiateCheckout', ttData);
+      } catch (e) {
+        window.ttq.track('InitiateCheckout', ttData);
+      }
     });
   }
 }
@@ -135,13 +172,21 @@ export function trackPurchase(params: PurchaseParams) {
     });
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('Purchase', {
+  // TikTok Pixels - track on all instances
+  if (window.ttq) {
+    const ttData = {
       content_ids: params.content_ids,
       value: params.value,
       currency: params.currency,
       quantity: params.num_items,
+    };
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('CompletePayment', ttData);
+      } catch (e) {
+        window.ttq.track('CompletePayment', ttData);
+      }
     });
   }
 }
@@ -161,13 +206,21 @@ export function trackProductView(productId: string, productName: string, value: 
     });
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('ViewContent', {
+  // TikTok Pixels - track on all instances
+  if (window.ttq) {
+    const ttData = {
       content_id: productId,
       content_name: productName,
       value,
       currency: 'DZD',
+    };
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('ViewContent', ttData);
+      } catch (e) {
+        window.ttq.track('ViewContent', ttData);
+      }
     });
   }
 }
@@ -183,10 +236,16 @@ export function trackSearch(searchQuery: string) {
     });
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('Search', {
-      query: searchQuery,
+  // TikTok Pixels - track on all instances
+  if (window.ttq) {
+    const ttData = { query: searchQuery };
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('Search', ttData);
+      } catch (e) {
+        window.ttq.track('Search', ttData);
+      }
     });
   }
 }
@@ -203,8 +262,15 @@ export function trackLead(value?: number) {
     });
   }
   
-  // TikTok Pixel
-  if (window.ttq && TT_PIXEL_ID) {
-    window.ttq.track('SubmitForm');
+  // TikTok Pixels - track on all instances
+  if (window.ttq) {
+    const pixelIds = getTikTokPixelIds();
+    pixelIds.forEach(pixelId => {
+      try {
+        window.ttq.instance(pixelId).track('SubmitForm');
+      } catch (e) {
+        window.ttq.track('SubmitForm');
+      }
+    });
   }
 }

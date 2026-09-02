@@ -271,7 +271,7 @@ export const ALL_PRODUCTS: Product[] = [
 🚚 **توصيل سريع لجميع الولايات**
 💯 **ضمان على جميع المنتجات**`,
     price: 19700,
-    originalPrice: 24000,
+    originalPrice: 24500,
     category: 'packets',
     images: [
       '/packs/media-phone/pack-main.jpg',
