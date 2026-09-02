@@ -28,7 +28,16 @@ export default function ProductPage() {
       .then(d => {
         if (d.success && Array.isArray(d.data)) {
           const found = d.data.find((p: any) => p.slug === slug);
-          if (found) setProduct(found);
+          if (found) {
+            // Map snake_case from API to camelCase
+            setProduct({
+              ...found,
+              originalPrice: found.original_price ?? found.originalPrice,
+              longDescription: found.long_description ?? found.longDescription,
+              inStock: found.in_stock ?? found.inStock,
+              reviewsCount: found.reviews_count ?? found.reviewsCount,
+            });
+          }
         }
       })
       .catch(() => { /* fallback */ });
